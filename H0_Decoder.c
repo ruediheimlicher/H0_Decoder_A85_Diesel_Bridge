@@ -731,40 +731,7 @@ void main (void)
             loopcount1 = 0;
             //OSZIATOG;
          
-            /*
-            // speed var
-            if((newspeed > oldspeed)) // beschleunigen
-            {
-               if(speed < newspeed)
-               {
-                  speed += speedintervall;
-               }
-               else 
-               {
-                  speed = newspeed;
-                  
-               }
-            }
-            else if((newspeed < oldspeed)) // bremsen
-            {
-               if((speed > newspeed) && ((speed + speedintervall) > 0))
-               {
-                  
-                  speed += speedintervall;
-               }
-               else 
-               {
-                  speed = newspeed;
-                  
-               }
-            }
-
-            
-            // end speed var
-            */
-            
-            
-            
+             
          }
          
          /*
