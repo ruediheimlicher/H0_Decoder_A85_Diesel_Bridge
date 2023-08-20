@@ -53,16 +53,9 @@
 #define MOTORA_PIN      3
 #define MOTORB_PIN      4
 
-#define LAMPEA_PIN      0
+#define LAMPEA_PIN      0 // used as OSZI
 #define LAMPEB_PIN      1
 
-/*
-#define MOTORA_PIN      0
-#define MOTORB_PIN      1
-
-#define LAMPEA_PIN      3
-#define LAMPEB_PIN      4
-*/
 
 #define MOTORDIR        0
 #define MOTOROUT        1

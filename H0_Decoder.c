@@ -219,6 +219,8 @@ void int0_init(void)
 void timer0 (uint8_t wert) 
 { 
    // set up timer with prescaler = 1 and CTC mode
+   TCCR0A = 0;
+   TCCR0B = 0;
    TCCR0A |= (1<<WGM01);
    TCCR0B |= (1<<CS01);
    
@@ -295,7 +297,7 @@ ISR(INT0_vect)
 #pragma mark ISR Timer0
 ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
 {
-   //OSZIATOG;
+  // OSZIALO; 
    //return;
    if (speed)
    {
@@ -303,7 +305,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
    }
    if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
-      OSZIALO;
+      //OSZIALO;
       MOTORPORT |= (1<<MOTORA_PIN); // MOTORA_PIN HI
       MOTORPORT |= (1<<MOTORB_PIN); // MOTORB_PIN HI   
  //     MOTORPORT |= (1<<pwmpin);      
@@ -325,7 +327,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
       }
        
  //     MOTORPORT &= ~(1<<pwmpin);
-      OSZIAHI;
+      //OSZIAHI;
       motorPWM = 0;
       
    }
@@ -660,6 +662,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
       }
       
    } // input LO
+   //OSZIAHI;
 }
 
 void main (void) 
@@ -718,13 +721,13 @@ void main (void)
       if (loopcount0>=loopledtakt)
       {
          //OSZIATOG;
-         LOOPLEDPORT ^= (1<<LOOPLED); 
+         //LOOPLEDPORT ^= (1<<LOOPLED); 
           
           loopcount0=0;
          loopcount1++;
          if (loopcount1 >= loopledtakt)
          {
-            LOOPLEDPORT ^= (1<<LOOPLED); // Kontrolle lastDIR
+            //LOOPLEDPORT ^= (1<<LOOPLED); // Kontrolle lastDIR
             loopcount1 = 0;
             //OSZIATOG;
          
