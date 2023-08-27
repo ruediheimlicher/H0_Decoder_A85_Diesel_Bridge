@@ -172,6 +172,9 @@ volatile uint8_t   maxspeed =  252;
 
 volatile uint8_t   lastDIR =  0;
 uint8_t loopledtakt = 0x40;
+uint8_t refreshtakt = 0x40;
+uint16_t speedchangetakt = 0x400; // takt fuer beschleunigen/bremsen
+
 
 volatile uint8_t loktyptable[4];
 
@@ -198,7 +201,7 @@ void slaveinit(void)
      LAMPEDDR |= (1<<LAMPEB_PIN);  // Lampe B
      LAMPEPORT &= ~(1<<LAMPEB_PIN); // LO
    
-   maxspeed =  252;//speedlookup_diesel[14];
+   maxspeed =  252; //speedlookup[14];
    
 }
 
@@ -306,15 +309,15 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
    if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
       //OSZIALO;
-      MOTORPORT |= (1<<MOTORA_PIN); // MOTORA_PIN HI
-      MOTORPORT |= (1<<MOTORB_PIN); // MOTORB_PIN HI   
- //     MOTORPORT |= (1<<pwmpin);      
+ //     MOTORPORT |= (1<<MOTORA_PIN); // MOTORA_PIN HI
+ //     MOTORPORT |= (1<<MOTORB_PIN); // MOTORB_PIN HI   
+      MOTORPORT |= (1<<pwmpin);      
 
    }
    
    if (motorPWM >= 254) //ON, neuer Motorimpuls
    {
-      
+      /*
       if(lokstatus & (1<<VORBIT))  
       {
          MOTORPORT |= (1<<MOTORA_PIN);
@@ -325,8 +328,8 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
          MOTORPORT |= (1<<MOTORB_PIN);
          MOTORPORT &= ~(1<<MOTORA_PIN);// MOTORA_PIN PWM, OFF        
       }
-       
- //     MOTORPORT &= ~(1<<pwmpin);
+       */
+      MOTORPORT &= ~(1<<pwmpin);
       //OSZIAHI;
       motorPWM = 0;
       
@@ -705,17 +708,7 @@ void main (void)
       wdt_reset();
       
       //Blinkanzeige
-      /*
-       if (lastDIR)
-       {
-       
-       }
-       else 
-       {
-       
-       }
-       */
-      
+        
       loopcount0++;
       
       if (loopcount0>=loopledtakt)
@@ -734,7 +727,7 @@ void main (void)
              
          }
          
-         /*
+         
          if(lokstatus & (1<<CHANGEBIT)) // Motor-Pins tauschen
          {
             if(pwmpin == MOTORA_PIN)
@@ -752,7 +745,7 @@ void main (void)
             
             lokstatus &= ~(1<<CHANGEBIT);
          }
-         */
+         
 
          
          // Lampen einstellen
