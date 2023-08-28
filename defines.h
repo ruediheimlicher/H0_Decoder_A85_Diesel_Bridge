@@ -53,7 +53,14 @@
 #define MOTORA_PIN      3
 #define MOTORB_PIN      4
 
+
+#define SNIFFPORT    PORTB 
+#define SNIFFDDR     DDRB
+#define SNIFFPIN     PINB
+
+
 #define SNIFF_PIN      0 // used as OSZI
+
 #define LAMPEB_PIN      1
 
 
