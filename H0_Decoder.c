@@ -195,8 +195,8 @@ void slaveinit(void)
      MOTORPORT &= ~(1<<MOTORB_PIN); // LO
 
 
-     LAMPEDDR |= (1<<LAMPEA_PIN);  // Lampe A
-     LAMPEPORT &= ~(1<<LAMPEA_PIN); // LO
+     //LAMPEDDR |= (1<<LAMPEA_PIN);  // Lampe A
+     //LAMPEPORT &= ~(1<<LAMPEA_PIN); // LO
 
      LAMPEDDR |= (1<<LAMPEB_PIN);  // Lampe B
      LAMPEPORT &= ~(1<<LAMPEB_PIN); // LO
@@ -598,7 +598,8 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                            oldspeed = speed; // behalten
                            
                            speedintervall = (newspeed - speed)>>2; // 4 teile
-                        //   newspeed = speedlookup[speedcode]; // zielwert
+                           newspeed = speedlookup[speedcode]; // zielwert
+                           
                            
                         }
                      }
@@ -709,15 +710,7 @@ void main (void)
       
       //Blinkanzeige
         
-      loopcount0++;
-      
-      if (loopcount0>=loopledtakt)
-      {
-         //OSZIATOG;
-         //LOOPLEDPORT ^= (1<<LOOPLED); 
-          
-          loopcount0=0;
-         loopcount1++;
+          loopcount1++;
          if (loopcount1 >= loopledtakt)
          {
             //LOOPLEDPORT ^= (1<<LOOPLED); // Kontrolle lastDIR
@@ -727,7 +720,14 @@ void main (void)
              
          }
          
-         
+      loopcount0++;
+      if (loopcount0>=refreshtakt)
+      {
+         //OSZIATOG;
+         //LOOPLEDPORT ^= (1<<LOOPLED); 
+          
+          loopcount0=0;
+        
          if(lokstatus & (1<<CHANGEBIT)) // Motor-Pins tauschen
          {
             if(pwmpin == MOTORA_PIN)
@@ -771,8 +771,8 @@ void main (void)
             }
             else 
             {
-               LAMPEPORT &= ~(1<<LAMPEA_PIN);
-  //             LAMPEPORT &= ~(1<<LAMPEB_PIN);
+               //LAMPEPORT &= ~(1<<LAMPEA_PIN);
+               LAMPEPORT &= ~(1<<LAMPEB_PIN);
             }
          }// if (lokstatus & (1<<VORBIT)
          
