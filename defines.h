@@ -53,7 +53,9 @@
 #define MOTORA_PIN      3
 #define MOTORB_PIN      4
 
-#define LAMPEA_PIN      0 // used as OSZI
+//#define LAMPEA_PIN      0 // used as OSZI
+
+#define SNIFF_PIN        0 // Betriebsspannung ++
 #define LAMPEB_PIN      1
 
 
@@ -74,9 +76,9 @@
 
 
 // lokstatus-Bits
-#define FUNKTION        0
-#define OLDFUNKTION     1
-#define FUNKTIONSTATUS  2
+//#define FUNKTION        0
+//#define OLDFUNKTION     1
+//#define FUNKTIONSTATUS  2
 
 
 
@@ -87,7 +89,7 @@
 #define DATABIT         2
 #define VORBIT          3 // eingestellte richtung
 #define FUNKTIONBIT     4
-#define OLDRICHTUNGBIT  5
+#define RUNBIT         5  // Lok hat speed
 #define RICHTUNGBIT     6
 #define CHANGEBIT       7  
 

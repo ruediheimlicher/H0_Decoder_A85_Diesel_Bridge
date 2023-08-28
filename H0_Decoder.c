@@ -99,7 +99,7 @@ volatile uint8_t     speed = 0;
 volatile uint8_t     oldspeed = 0;
 volatile uint8_t     newspeed = 0;
 volatile uint8_t     minspeed = 0; // Unterster Wert in speedlookup-tabelle
-
+volatile uint8_t     speedcode = 0;
 volatile int8_t      speedintervall = 0;
 
 volatile uint8_t   dimm = 0; // LED dimmwert
@@ -195,10 +195,14 @@ void slaveinit(void)
      MOTORPORT &= ~(1<<MOTORB_PIN); // LO
 
 
-     LAMPEDDR |= (1<<LAMPEA_PIN);  // Lampe A
-     LAMPEPORT &= ~(1<<LAMPEA_PIN); // LO
+  //   LAMPEDDR |= (1<<LAMPEA_PIN);  // Lampe A
+  //   LAMPEPORT &= ~(1<<LAMPEA_PIN); // LO
+   
+   LAMPEDDR &= ~(1<<SNIFF_PIN); // Eingang Betriebsspannung
+   LAMPEPORT &= ~(1<<SNIFF_PIN); // LO
+  
 
-     LAMPEDDR |= (1<<LAMPEB_PIN);  // Lampe B
+   LAMPEDDR |= (1<<LAMPEB_PIN);  // Lampe B
      LAMPEPORT &= ~(1<<LAMPEB_PIN); // LO
    
    maxspeed =  252; //speedlookup[14];
@@ -473,7 +477,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                      deflokadresse = lokadresseB;
                      //deffunktion = (rawdataB & 0x03); // bit 0,1 funktion als eigene var
                      deffunktion = rawfunktionB;
-                     uint8_t speedcode = 0;
+                     
                      
                      if (deffunktion)
                      {
@@ -534,14 +538,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                         
                         lokstatus &= ~(1<<RICHTUNGBIT); // Vorgang Richtungsbit wieder beenden, 
 // MARK: speed           
-                        /*
-                        if(deflokdata == 0)
-                        {
-                           speed = oldspeed;
-                        }
-                        else
-                         */
-                        {
+                         {
                            switch (deflokdata)
                            {
                               case 0:
@@ -594,12 +591,25 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                                  break;
                                  
                            }
-                           speed = speedlookup[speedcode];
+                           //speed = speedlookup[speedcode];
                            oldspeed = speed; // behalten
                            
                            speedintervall = (newspeed - speed)>>2; // 4 teile
-                        //   newspeed = speedlookup[speedcode]; // zielwert
+
+                           // new from 84
+                           newspeed = speedlookup[speedcode]; // zielwert
+                            if(speedcode > 0)
+                            {
+                               lokstatus |= (1<<RUNBIT); // lok in bewegung
+                            }
+                            else
+                            {
+                               lokstatus &= ~(1<<RUNBIT); // lok steht still
+                            }
+
                            
+                           
+                           // end 84
                         }
                      }
                      
@@ -707,26 +717,69 @@ void main (void)
       // Timing: loop: 40 us, takt 85us, mit if-teil 160 us
       wdt_reset();
       
-      //Blinkanzeige
-        
-      loopcount0++;
+     // new from 84
       
-      if (loopcount0>=loopledtakt)
+ //     if(PINB & (1 << SNIFF_PIN)) // Source OK
+      {
+         //PORTA &= ~(1<<PA4); // LED on
+         
+         loopcount1++;
+         if (loopcount1 >= speedchangetakt)
+         {
+            
+            //LOOPLEDPORT ^= (1<<LOOPLED); // Kontrolle lastDIR
+            loopcount1 = 0;
+            //OSZIATOG;
+         
+            // speed var
+            if((newspeed > oldspeed)) // beschleunigen
+            {
+               if(speed < newspeed)
+               {
+                  speed += speedintervall;
+               }
+               else 
+               {
+                  speed = newspeed;
+               }
+            }
+            else if((newspeed < oldspeed)) // bremsen
+            {
+               if((speed > newspeed) && ((speed + speedintervall) > 0))
+               {
+                  speed += speedintervall;
+               }
+               else 
+               {
+                  speed = newspeed;
+               }
+            }
+            // end speed var
+          } // loopcount1 >= speedchangetakt
+           
+      }// Source OK
+      
+      /*
+      else  // source down, speed up
+      {
+         //PORTA |= (1<<PA4);
+         if((lokstatus & (1<<RUNBIT)) && (speedcode && (speedcode < 13))) // lok ist in bewegung
+         {
+            speed = speedlookup[speedcode+2];
+         }         
+      } // source not OK
+      */
+       // end from 84
+
+      
+      loopcount0++;
+      if (loopcount0>=refreshtakt)
       {
          //OSZIATOG;
          //LOOPLEDPORT ^= (1<<LOOPLED); 
           
           loopcount0=0;
-         loopcount1++;
-         if (loopcount1 >= loopledtakt)
-         {
-            //LOOPLEDPORT ^= (1<<LOOPLED); // Kontrolle lastDIR
-            loopcount1 = 0;
-            //OSZIATOG;
-         
-             
-         }
-         
+          
          
          if(lokstatus & (1<<CHANGEBIT)) // Motor-Pins tauschen
          {
@@ -771,8 +824,8 @@ void main (void)
             }
             else 
             {
-               LAMPEPORT &= ~(1<<LAMPEA_PIN);
-  //             LAMPEPORT &= ~(1<<LAMPEB_PIN);
+   //            LAMPEPORT &= ~(1<<LAMPEA_PIN);
+               LAMPEPORT &= ~(1<<LAMPEB_PIN);
             }
          }// if (lokstatus & (1<<VORBIT)
          
