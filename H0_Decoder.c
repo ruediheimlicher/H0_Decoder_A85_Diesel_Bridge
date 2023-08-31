@@ -84,7 +84,7 @@ volatile uint8_t   oldlokdata = 0;
 //volatile uint8_t   lokdata = 0;
 volatile uint8_t   deflokdata = 0;
 
-//volatile uint16_t   startdelaycounter = 0; // 
+volatile uint16_t   paketabstandcounter = 0; // 
 //volatile uint16_t   newlokdata = 0;
 
 //volatile uint16_t   blinkWait = 0x2FFF; 
@@ -99,7 +99,7 @@ volatile uint8_t     speed = 0;
 volatile uint8_t     oldspeed = 0;
 volatile uint8_t     newspeed = 0;
 volatile uint8_t     minspeed = 0; // Unterster Wert in speedlookup-tabelle
-volatile uint8_t speedcode = 0;
+volatile uint8_t     speedcode = 0;
 volatile int8_t      speedintervall = 0;
 
 volatile uint8_t   dimm = 0; // LED dimmwert
@@ -248,9 +248,11 @@ void timer0 (uint8_t wert)
 #pragma mark INT0
 ISR(INT0_vect) 
 {
+   paketabstandcounter = 0;// Abstandmessung neu beginnen
    //OSZIATOG;
    if (INT0status == 0) // neue Daten beginnen
    {
+      
       //OSZIALO; 
       INT0status |= (1<<INT0_START);
       INT0status |= (1<<INT0_WAIT); // delay, um Wert des Eingangs zum richtigen Zeitpunkt zu messen
@@ -299,7 +301,7 @@ ISR(INT0_vect)
    }
 }
 
-#pragma mark ISR Timer0
+// MARK:  ISR Timer0
 ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
 {
   // OSZIALO; 
@@ -311,32 +313,21 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
    if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
       //OSZIALO;
- //     MOTORPORT |= (1<<MOTORA_PIN); // MOTORA_PIN HI
- //     MOTORPORT |= (1<<MOTORB_PIN); // MOTORB_PIN HI   
       MOTORPORT |= (1<<pwmpin);      
 
    }
    
    if (motorPWM >= 254) //ON, neuer Motorimpuls
    {
-      /*
-      if(lokstatus & (1<<VORBIT))  
-      {
-         MOTORPORT |= (1<<MOTORA_PIN);
-         MOTORPORT &= ~(1<<MOTORB_PIN);// MOTORB_PIN PWM, OFF
-      }
-      else 
-      {
-         MOTORPORT |= (1<<MOTORB_PIN);
-         MOTORPORT &= ~(1<<MOTORA_PIN);// MOTORA_PIN PWM, OFF        
-      }
-       */
       MOTORPORT &= ~(1<<pwmpin);
       //OSZIAHI;
       motorPWM = 0;
       
    }
-   
+   if(paketabstandcounter < 0xFFFA)
+   {
+      paketabstandcounter++;
+   }
    
    // MARK: TIMER0 TIMER0_COMPA INT0
    if (INT0status & (1<<INT0_WAIT))
@@ -345,6 +336,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
       if (waitcounter > 2)// Impulsdauer > minimum
       {
          //OSZIAHI;
+         
          INT0status &= ~(1<<INT0_WAIT);
          if (INT0status & (1<<INT0_PAKET_A))
          {

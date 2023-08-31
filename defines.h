@@ -61,6 +61,7 @@
 
 #define SNIFF_PIN      0 // used as OSZI
 
+
 #define LAMPEB_PIN      1
 
 
