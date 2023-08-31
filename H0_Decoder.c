@@ -154,7 +154,7 @@ volatile uint8_t   taskcounter = 0;
 //volatile uint8_t   speedlookup[14] = {0,46,73,92,106,119,129,138,146,153,159,165,170,175,180};
 
 //log 160
-//volatile uint8_t   speedlookup[14] = {0,40,64,81,95,105,114,122,129,136,141,146,151,155,160};
+volatile uint8_t   speedlookup[15] = {0,40,64,81,95,105,114,122,129,136,141,146,151,155,160};
 
 // log 140
 //volatile uint8_t   speedlookup[14] = {0,35,56,71,83,92,100,107,113,119,123,128,132,136,140};
@@ -166,7 +166,7 @@ volatile uint8_t   taskcounter = 0;
 //volatile uint8_t   speedlookup[15] = {0,37,38,41,44,48,52,58,64,72,80,89,98,109,120};
 
 // log 44/120
-volatile uint8_t   speedlookup[15] = {0,45,46,48,51,55,59,64,70,76,84,92,100,110,120};
+//volatile uint8_t   speedlookup[15] = {0,45,46,48,51,55,59,64,70,76,84,92,100,110,120};
 
 volatile uint8_t   maxspeed =  252;
 
@@ -189,10 +189,10 @@ void slaveinit(void)
    
    
    MOTORDDR |= (1<<MOTORA_PIN);  // Output Motor A 
-   MOTORPORT &= ~(1<<MOTORA_PIN); // LO
+   MOTORPORT |= (1<<MOTORA_PIN); // HI
    
    MOTORDDR |= (1<<MOTORB_PIN);  // Output Motor B 
-   MOTORPORT &= ~(1<<MOTORB_PIN); // LO
+   MOTORPORT |= (1<<MOTORB_PIN); // HI
    
    
    //LAMPEDDR |= (1<<LAMPEA_PIN);  // Lampe A
@@ -724,9 +724,9 @@ int main (void)
             }
             else if((newspeed < oldspeed)) // bremsen
             {
-               if((speed > newspeed) && ((speed + speedintervall) > 0))
+               if((speed > newspeed) && ((speed + 2*speedintervall) > 0))
                {
-                  speed += speedintervall;
+                  speed += 2*speedintervall;
                }
                else 
                {
@@ -738,9 +738,20 @@ int main (void)
       else  // source down, speed up
       {
          //PORTA |= (1<<PA4);
-         if((lokstatus & (1<<RUNBIT)) && (speedcode && (speedcode < 13))) // lok ist in bewegung
+         if((lokstatus & (1<<RUNBIT)) ) // lok ist in bewegung
+         
          {
-            speed = speedlookup[speedcode+2];
+            //LAMPEPORT &= ~(1<<LAMPEB_PIN);
+            if(speedcode && (speedcode < 11))
+            {
+               speed = speedlookup[speedcode+4];
+            }
+            else  if(speedcode && (speedcode < 13))
+            {
+               speed = speedlookup[speedcode+2];
+               
+            }
+            //LAMPEPORT ^=(1<<LAMPEB_PIN);
          }         
       } // source not OK
       
@@ -775,28 +786,28 @@ int main (void)
             if (lokstatus & (1<<FUNKTIONBIT))
             {
                //            LAMPEPORT |=(1<<LAMPEA_PIN);
-               LAMPEPORT &= ~(1<<LAMPEB_PIN);
+               // * LAMPEPORT &= ~(1<<LAMPEB_PIN);
             }
             else
             {
                //            LAMPEPORT &= ~(1<<LAMPEA_PIN);
-               LAMPEPORT &= ~(1<<LAMPEB_PIN);
+               // *LAMPEPORT &= ~(1<<LAMPEB_PIN);
             }
          }
          else
          {
             if (lokstatus & (1<<FUNKTIONBIT))
             {
-               LAMPEPORT |=(1<<LAMPEB_PIN);
+               // *LAMPEPORT |=(1<<LAMPEB_PIN);
                //            LAMPEPORT &= ~(1<<LAMPEA_PIN);
             }
             else 
             {
                //LAMPEPORT &= ~(1<<LAMPEA_PIN);
-               LAMPEPORT &= ~(1<<LAMPEB_PIN);
+               // *LAMPEPORT &= ~(1<<LAMPEB_PIN);
             }
          }// if (lokstatus & (1<<VORBIT)
-         
+         /*
          if (deflokadresse == LOK_ADRESSE)
          {
             //OSZIATOG;
@@ -805,7 +816,7 @@ int main (void)
          {
             //OSZIAHI;
          }
-         
+         */
          
       }
       //OSZIAHI;
