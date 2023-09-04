@@ -81,9 +81,9 @@
 
 
 // lokstatus-Bits
-#define FUNKTION        0
-#define OLDFUNKTION     1
-#define FUNKTIONSTATUS  2
+//#define FUNKTION        0
+//#define OLDFUNKTION     1
+//#define FUNKTIONSTATUS  2
 
 
 
@@ -91,10 +91,11 @@
 
 
 #define ADDRESSBIT      0
+#define STARTBIT        1 // Startimpuls
 #define DATABIT         2
 #define VORBIT          3 // eingestellte richtung
 #define FUNKTIONBIT     4
-#define RUNBIT  5
+#define RUNBIT          5
 #define RICHTUNGBIT     6
 #define CHANGEBIT       7  
 

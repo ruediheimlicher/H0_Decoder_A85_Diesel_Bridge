@@ -15,6 +15,8 @@
 #include <avr/wdt.h>
 #include "defines.h"
 
+#include "adc.c"
+
 #define LOK_TYP_DIESEL  1
 #define LOK_TYP_RE44  2
 
@@ -63,7 +65,7 @@ volatile uint8_t   HIimpulsdauerSpeicher=0;      //   Speicher  fuer HIimpulsdau
 
 volatile uint8_t   LOimpulsdauerOK=0;   
 
-volatile uint8_t   pausecounter = 0; //  neue Šdaten detektieren
+volatile uint8_t   pausecounter = 0; //  neue daten detektieren
 volatile uint8_t   abstandcounter = 0; // zweites Paket detektieren
 
 volatile uint8_t   tritposition = 0; // nummer des trit im Paket
@@ -84,7 +86,8 @@ volatile uint8_t   oldlokdata = 0;
 //volatile uint8_t   lokdata = 0;
 volatile uint8_t   deflokdata = 0;
 
-//volatile uint16_t   startdelaycounter = 0; // 
+uint8_t   paketabstandcounterA = 0; // 
+uint8_t   paketabstandcounterB = 0; // 
 //volatile uint16_t   newlokdata = 0;
 
 //volatile uint16_t   blinkWait = 0x2FFF; 
@@ -98,8 +101,9 @@ volatile uint8_t     oldspeedcode = 0;
 volatile uint8_t     speed = 0;
 volatile uint8_t     oldspeed = 0;
 volatile uint8_t     newspeed = 0;
+volatile uint8_t     startspeed = 0; // Anlaufimpuls
 volatile uint8_t     minspeed = 0; // Unterster Wert in speedlookup-tabelle
-volatile uint8_t speedcode = 0;
+volatile uint8_t     speedcode = 0;
 volatile int8_t      speedintervall = 0;
 
 volatile uint8_t   dimm = 0; // LED dimmwert
@@ -112,8 +116,8 @@ volatile uint8_t   deffunktion = 0;
 volatile uint8_t   waitcounter = 0;
 volatile uint8_t   richtungcounter = 0; // delay fuer Richtungsimpuls
 
-volatile uint8_t pwmpin = MOTORA_PIN;           // Motor PWM
-volatile uint8_t richtungpin = MOTORB_PIN;      // Motor Richtung
+volatile uint8_t     pwmpin = MOTORA_PIN;           // Motor PWM
+volatile uint8_t     richtungpin = MOTORB_PIN;      // Motor Richtung
 
 //volatile uint8_t   Potwert=45;
          //   Zaehler fuer richtige Impulsdauer
@@ -127,7 +131,7 @@ volatile uint8_t   motorPWM=0;
 volatile uint8_t   motorPWM_n=0;
 
 
-volatile uint8_t   wdtcounter = 0;
+volatile uint16_t   wdtcounter = 0;
 
 volatile uint8_t   taskcounter = 0;
 
@@ -173,15 +177,15 @@ volatile uint8_t   maxspeed =  252;
 volatile uint8_t   lastDIR =  0;
 uint8_t loopledtakt = 0x40;
 uint8_t refreshtakt = 0x40;
-uint16_t speedchangetakt = 0x400; // takt fuer beschleunigen/bremsen
+uint16_t speedchangetakt = 0x350; // takt fuer beschleunigen/bremsen
 
 
 volatile uint8_t loktyptable[4];
 
 void slaveinit(void)
 {
-   OSZIPORT |= (1<<OSZIA);	//Pin 6 von PORT D als Ausgang fuer OSZI A
-   OSZIDDR |= (1<<OSZIA);	//Pin 7 von PORT D als Ausgang fuer SOSZI B
+   //OSZIPORT |= (1<<OSZIA);	//Pin 6 von PORT D als Ausgang fuer OSZI A
+   //OSZIDDR |= (1<<OSZIA);	//Pin 7 von PORT D als Ausgang fuer SOSZI B
    
    
    //   LOOPLEDDDR |=(1<<LOOPLED); // HI
@@ -204,11 +208,34 @@ void slaveinit(void)
    LAMPEPORT &= ~(1<<LAMPEB_PIN); // LO
    
    maxspeed =  252; //speedlookup[14];
-   
+   initADC(0);
 }
 
+void timer1(void)
+{
+   TCCR1 = 0;
+   
+   TCCR1 |= (1<<CTC1);
+   TCCR1 |= (1 << CS11) | (1 << CS10);
+   OCR1C = 155;
+   OCR1A = OCR1C;
+   // enable compare interrupt
+   TIMSK |= (1 << TOIE1);
+   TIMSK |= (1 << OCIE1A);
+}
 
+ISR(TIMER1_OVF_vect)
+{
+  // paketabstandcounterA++;
+   OSZIATOG;
+}
 
+ISR(TIMER1_COMPA_vect)
+{
+  
+   OSZIATOG;
+   paketabstandcounterA++;
+}
 
 void int0_init(void)
 {
@@ -248,10 +275,13 @@ void timer0 (uint8_t wert)
 #pragma mark INT0
 ISR(INT0_vect) 
 {
-   //OSZIATOG;
+   
+
+   //OSZIALO;
    if (INT0status == 0) // neue Daten beginnen
    {
-      //OSZIALO; 
+      paketabstandcounterA = 0;// Abstandmessung neu beginnen
+//      OSZIALO; 
       INT0status |= (1<<INT0_START);
       INT0status |= (1<<INT0_WAIT); // delay, um Wert des Eingangs zum richtigen Zeitpunkt zu messen
       
@@ -290,6 +320,7 @@ ISR(INT0_vect)
    
    else // Data in Gang, neuer Interrupt
    {
+      //paketabstandcounterA++;
       INT0status |= (1<<INT0_WAIT);
       
       pausecounter = 0;
@@ -297,13 +328,17 @@ ISR(INT0_vect)
       waitcounter = 0;
       //OSZIALO;
    }
+   //OSZIAHI;
 }
 
 #pragma mark ISR Timer0
 ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
 {
-  // OSZIALO; 
+   //OSZIALO; 
    //return;
+   //paketabstandcounterA++;
+
+   
    if (speed)
    {
       motorPWM++;
@@ -319,28 +354,25 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
    
    if (motorPWM >= 254) //ON, neuer Motorimpuls
    {
-      /*
-      if(lokstatus & (1<<VORBIT))  
-      {
-         MOTORPORT |= (1<<MOTORA_PIN);
-         MOTORPORT &= ~(1<<MOTORB_PIN);// MOTORB_PIN PWM, OFF
-      }
-      else 
-      {
-         MOTORPORT |= (1<<MOTORB_PIN);
-         MOTORPORT &= ~(1<<MOTORA_PIN);// MOTORA_PIN PWM, OFF        
-      }
-       */
-      MOTORPORT &= ~(1<<pwmpin);
+       MOTORPORT &= ~(1<<pwmpin);
       //OSZIAHI;
       motorPWM = 0;
       
    }
    
+
    
    // MARK: TIMER0 TIMER0_COMPA INT0
    if (INT0status & (1<<INT0_WAIT))
    {
+      //paketabstandcounterA++;
+      /*
+      if(paketabstandcounterA > 100)
+      {
+         paketabstandcounterA = 0;
+         paketabstandcounterB++;
+      }
+       */
       waitcounter++; 
       if (waitcounter > 2)// Impulsdauer > minimum
       {
@@ -458,7 +490,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
             }
             else if (INT0status & (1<<INT0_PAKET_B)) // zweites Paket, Werte testen
             {
-               
+               //OSZIAHI; 
                
 // MARK: EQUAL
                if (lokadresseA && ((rawfunktionA == rawfunktionB) && (rawdataA == rawdataB) && (lokadresseA == lokadresseB))) // Lokadresse > 0 und Lokadresse und Data OK
@@ -541,6 +573,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                            {
                               case 0:
                                  speedcode = 0;
+                                 lokstatus &= ~(1<<STARTBIT);
                                  break;
                               case 0x0C:
                                  speedcode = 1;
@@ -590,6 +623,11 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                                  
                            }
                            //speed = speedlookup[speedcode];
+                            if(speedcode && (speedcode < 4) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
+                            {
+                               startspeed = speedlookup[speedcode+2]; // Startimpuls
+                               lokstatus |= (1<<STARTBIT);
+                            }
                            oldspeed = speed; // behalten
                            
                            speedintervall = (newspeed - speed)>>2; // 4 teile
@@ -635,7 +673,8 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                }
             } // End Paket B
          }
-         
+         // ca. 50us seit paketbeginn
+         //OSZIAHI;
       } // waitcounter > 2
    } // if INT0_WAIT
    
@@ -670,7 +709,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
       }
       
    } // input LO
-   //OSZIAHI;
+   //OSZIATOG;
 }
 
 int main (void) 
@@ -681,7 +720,7 @@ int main (void)
      //   lastDIR = 1;
    slaveinit();
    int0_init();
-   
+   //timer1();
    timer0(4);
    uint16_t loopcount0=0;
    uint16_t loopcount1=0;
@@ -700,8 +739,20 @@ int main (void)
    while (1)
    {   
       // Timing: loop: 40 us, takt 85us, mit if-teil 160 us
+      // 2023: loop ca. 400us
       wdt_reset();
-       
+      paketabstandcounterA++; 
+     //uint8_t res = readKanalSimple(0);
+      /*
+      if((paketabstandcounterA ) > 150) // Grenze ca. 120
+      {
+         //OSZIATOG;
+  //       paketabstandcounterB ++;
+  //       OSZIAHI;
+         
+      }
+*/
+  //    if((paketabstandcounterA ) < 150) // Grenze ca. 120
       if(SNIFFPIN & (1 << SNIFF_PIN)) // Source OK
       {
          loopcount1++;
@@ -715,6 +766,11 @@ int main (void)
             {
                if(speed < newspeed)
                {
+                  if((startspeed > speed) && (lokstatus & (1<<STARTBIT)))
+                  {
+                     speed = startspeed;
+                     lokstatus &= ~(1<<STARTBIT);
+                  }
                   speed += speedintervall;
                }
                else 
@@ -735,9 +791,11 @@ int main (void)
             }
          } // loopcount1 >= speedchangetakt
       }
+      
       else  // source down, speed up
       {
          //PORTA |= (1<<PA4);
+         //LAMPEPORT ^= (1<<LAMPEB_PIN);
          if((lokstatus & (1<<RUNBIT)) ) // lok ist in bewegung
          
          {
@@ -769,55 +827,20 @@ int main (void)
             {
                pwmpin = MOTORB_PIN;
                richtungpin = MOTORA_PIN;
+               LAMPEPORT |= (1<<LAMPEB_PIN); // Lampen einstellen
             }
             else
             {
                pwmpin = MOTORA_PIN;
                richtungpin = MOTORB_PIN;
+               LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampen einstellen
             }
             MOTORPORT |= (1<<richtungpin); // Richtung setzen
             
             lokstatus &= ~(1<<CHANGEBIT);
          }
          
-         // Lampen einstellen
-         if(lokstatus & (1<<VORBIT)) 
-         {
-            if (lokstatus & (1<<FUNKTIONBIT))
-            {
-               //            LAMPEPORT |=(1<<LAMPEA_PIN);
-               // * LAMPEPORT &= ~(1<<LAMPEB_PIN);
-            }
-            else
-            {
-               //            LAMPEPORT &= ~(1<<LAMPEA_PIN);
-               // *LAMPEPORT &= ~(1<<LAMPEB_PIN);
-            }
-         }
-         else
-         {
-            if (lokstatus & (1<<FUNKTIONBIT))
-            {
-               // *LAMPEPORT |=(1<<LAMPEB_PIN);
-               //            LAMPEPORT &= ~(1<<LAMPEA_PIN);
-            }
-            else 
-            {
-               //LAMPEPORT &= ~(1<<LAMPEA_PIN);
-               // *LAMPEPORT &= ~(1<<LAMPEB_PIN);
-            }
-         }// if (lokstatus & (1<<VORBIT)
-         /*
-         if (deflokadresse == LOK_ADRESSE)
-         {
-            //OSZIATOG;
-         }
-         else
-         {
-            //OSZIAHI;
-         }
-         */
-         
+           
       }
       //OSZIAHI;
    }//while
