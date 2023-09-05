@@ -60,7 +60,8 @@
 
 
 #define SNIFF_PIN      0 // used as OSZI
-
+#define AC_PIN           1 // Eingang AnalogComp
+#define LAMPEA_PIN      0
 #define LAMPEB_PIN      1
 
 

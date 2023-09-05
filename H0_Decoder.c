@@ -204,11 +204,11 @@ void slaveinit(void)
    SNIFFDDR &= ~(1<<SNIFF_PIN); // Eingang
    SNIFFPORT &= ~(1<<SNIFF_PIN); // LO
    
-   LAMPEDDR |= (1<<LAMPEB_PIN);  // Lampe B
-   LAMPEPORT &= ~(1<<LAMPEB_PIN); // LO
+//   LAMPEDDR |= (1<<LAMPEB_PIN);  // Lampe B
+//   LAMPEPORT &= ~(1<<LAMPEB_PIN); // LO
    
    maxspeed =  252; //speedlookup[14];
-   initADC(0);
+   //initADC(0);
 }
 
 void timer1(void)
@@ -237,6 +237,32 @@ ISR(TIMER1_COMPA_vect)
    paketabstandcounterA++;
 }
 
+void initAnalogComp(void)
+{
+   ACSR &= ~(1<<ACIE);
+   ACSR |= (1<<ACBG);
+   ACSR &= ~(1<<ACD); // enable ACD
+   ACSR &= ~(1<<ACI); // clear flag
+   ACSR &= ~(1<<ACIS0); // 
+   ACSR &= ~(1<<ACIS1); // 
+   ACSR |= (1<<ACIE);
+   
+   DIDR0 |= (1<<AIN0D);
+   DIDR0 |= (1<<AIN1D);
+   
+   
+}
+
+ISR (ANA_COMP_vect)
+{
+   speed = 0;
+   return;
+   if(speed < 100)
+   {
+      speed += 10;
+   }
+   //PORTB ^= (1<<PB0);
+}
 void int0_init(void)
 {
    MCUCR = (1<<ISC00 | (1<<ISC01)); // raise int0 on rising edge
@@ -735,6 +761,9 @@ int main (void)
    wdt_reset();
    ledpwm = LEDPWM;
    minspeed = speedlookup[0];
+   
+   initAnalogComp();
+   
    sei();
    while (1)
    {   
@@ -753,7 +782,7 @@ int main (void)
       }
 */
   //    if((paketabstandcounterA ) < 150) // Grenze ca. 120
-      if(SNIFFPIN & (1 << SNIFF_PIN)) // Source OK
+  //    if(SNIFFPIN & (1 << SNIFF_PIN)) // Source OK
       {
          loopcount1++;
          if (loopcount1 >= speedchangetakt)
@@ -791,7 +820,7 @@ int main (void)
             }
          } // loopcount1 >= speedchangetakt
       }
-      
+      /*
       else  // source down, speed up
       {
          //PORTA |= (1<<PA4);
@@ -812,7 +841,7 @@ int main (void)
             //LAMPEPORT ^=(1<<LAMPEB_PIN);
          }         
       } // source not OK
-      
+      */
       loopcount0++;
       if (loopcount0>=refreshtakt)
       {
@@ -823,17 +852,21 @@ int main (void)
          
          if(lokstatus & (1<<CHANGEBIT)) // Motor-Pins tauschen
          {
+            //PORTB ^= (1<<PB0);
             if(pwmpin == MOTORA_PIN)
             {
                pwmpin = MOTORB_PIN;
                richtungpin = MOTORA_PIN;
-               LAMPEPORT |= (1<<LAMPEB_PIN); // Lampen einstellen
+               //LAMPEPORT |= (1<<LAMPEB_PIN); // Lampen einstellen
+         //      LAMPEPORT |= (1<<LAMPEA_PIN); // Lampen einstellen
             }
             else
             {
                pwmpin = MOTORA_PIN;
                richtungpin = MOTORB_PIN;
-               LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampen einstellen
+              
+               //LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampen einstellen
+       //        LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampen einstellen
             }
             MOTORPORT |= (1<<richtungpin); // Richtung setzen
             
