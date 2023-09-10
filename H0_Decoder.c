@@ -86,8 +86,8 @@ volatile uint8_t   oldlokdata = 0;
 //volatile uint8_t   lokdata = 0;
 volatile uint8_t   deflokdata = 0;
 
-uint8_t   paketabstandcounterA = 0; // 
-uint8_t   paketabstandcounterB = 0; // 
+//uint8_t   paketabstandcounterA = 0; // 
+//uint8_t   paketabstandcounterB = 0; // 
 //volatile uint16_t   newlokdata = 0;
 
 //volatile uint16_t   blinkWait = 0x2FFF; 
@@ -234,7 +234,7 @@ ISR(TIMER1_COMPA_vect)
 {
   
    OSZIATOG;
-   paketabstandcounterA++;
+   //paketabstandcounterA++;
 }
 
 void int0_init(void)
@@ -280,7 +280,7 @@ ISR(INT0_vect)
    //OSZIALO;
    if (INT0status == 0) // neue Daten beginnen
    {
-      paketabstandcounterA = 0;// Abstandmessung neu beginnen
+      //paketabstandcounterA = 0;// Abstandmessung neu beginnen
 //      OSZIALO; 
       INT0status |= (1<<INT0_START);
       INT0status |= (1<<INT0_WAIT); // delay, um Wert des Eingangs zum richtigen Zeitpunkt zu messen
@@ -534,7 +534,6 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                         }
                      }
                      
-                     
                      // Richtung
                      if (deflokdata == 0x03) // Wert 1, > Richtung togglen
                      {
@@ -546,29 +545,28 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                            //speed = 0;
                            
                            lokstatus ^= (1<<VORBIT); // Richtung togglen
-                            
+                           
                            lokstatus |= (1<<CHANGEBIT);
-                         } // if !(lokstatus & (1<<RICHTUNGBIT)
+                        } // if !(lokstatus & (1<<RICHTUNGBIT)
                         
                         
                         /* TODO
-                        else // repetition 0x03
-                        {
-                           richtungcounter++;
-                           if (richtungcounter > 4)
-                           {
-                              lokstatus &= ~(1<<RICHTUNGBIT); // Vorgang Richtungsbit wieder beenden, 
-                              richtungcounter = 0;
-                           }
-                        }
+                         else // repetition 0x03
+                         {
+                         richtungcounter++;
+                         if (richtungcounter > 4)
+                         {
+                         lokstatus &= ~(1<<RICHTUNGBIT); // Vorgang Richtungsbit wieder beenden, 
+                         richtungcounter = 0;
+                         }
+                         }
                          */
                      } // deflokdata == 0x03
                      else 
                      {  
-                        
                         lokstatus &= ~(1<<RICHTUNGBIT); // Vorgang Richtungsbit wieder beenden, 
-// MARK: speed           
-                         {
+                        // MARK: speed           
+                        {
                            switch (deflokdata)
                            {
                               case 0:
@@ -623,26 +621,23 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                                  
                            }
                            //speed = speedlookup[speedcode];
-                            if(speedcode && (speedcode < 4) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
-                            {
-                               startspeed = speedlookup[speedcode+2]; // Startimpuls
-                               lokstatus |= (1<<STARTBIT);
-                            }
+                           if(speedcode && (speedcode < 2) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
+                           {
+                              startspeed = (speedlookup[speedcode] + speedlookup[speedcode+1])/2; // Startimpuls
+                              lokstatus |= (1<<STARTBIT);
+                           }
                            oldspeed = speed; // behalten
                            
                            speedintervall = (newspeed - speed)>>2; // 4 teile
                            newspeed = speedlookup[speedcode]; // zielwert
-                            if(speedcode > 0)
-                            {
-                               lokstatus |= (1<<RUNBIT); // lok in bewegung
-                            }
-                            else
-                            {
-                               lokstatus &= ~(1<<RUNBIT); // lok steht still
-                            }
- 
-                           
-                           
+                           if(speedcode > 0)
+                           {
+                              lokstatus |= (1<<RUNBIT); // lok in bewegung
+                           }
+                           else
+                           {
+                              lokstatus &= ~(1<<RUNBIT); // lok steht still
+                           }
                         }
                      }
                      
@@ -717,10 +712,8 @@ int main (void)
    //WDT ausschalten 
    MCUSR = 0;
    wdt_disable();
-     //   lastDIR = 1;
    slaveinit();
    int0_init();
-   //timer1();
    timer0(4);
    uint16_t loopcount0=0;
    uint16_t loopcount1=0;
@@ -741,19 +734,7 @@ int main (void)
       // Timing: loop: 40 us, takt 85us, mit if-teil 160 us
       // 2023: loop ca. 400us
       wdt_reset();
-      paketabstandcounterA++; 
-     //uint8_t res = readKanalSimple(0);
-      /*
-      if((paketabstandcounterA ) > 150) // Grenze ca. 120
-      {
-         //OSZIATOG;
-  //       paketabstandcounterB ++;
-  //       OSZIAHI;
-         
-      }
-*/
-  //    if((paketabstandcounterA ) < 150) // Grenze ca. 120
-      if(SNIFFPIN & (1 << SNIFF_PIN)) // Source OK
+  //    if(SNIFFPIN & (1 << SNIFF_PIN)) // Source OK
       {
          loopcount1++;
          if (loopcount1 >= speedchangetakt)
@@ -766,7 +747,7 @@ int main (void)
             {
                if(speed < newspeed)
                {
-                  if((startspeed > speed) && (lokstatus & (1<<STARTBIT)))
+                  if((startspeed > speed) && (lokstatus & (1<<STARTBIT))) // Startimpuls
                   {
                      speed = startspeed;
                      lokstatus &= ~(1<<STARTBIT);
@@ -791,9 +772,10 @@ int main (void)
             }
          } // loopcount1 >= speedchangetakt
       }
-      
+      /*
       else  // source down, speed up
       {
+         
          //PORTA |= (1<<PA4);
          //LAMPEPORT ^= (1<<LAMPEB_PIN);
          if((lokstatus & (1<<RUNBIT)) ) // lok ist in bewegung
@@ -812,7 +794,7 @@ int main (void)
             //LAMPEPORT ^=(1<<LAMPEB_PIN);
          }         
       } // source not OK
-      
+      */
       loopcount0++;
       if (loopcount0>=refreshtakt)
       {
