@@ -59,8 +59,8 @@
 #define SNIFFPIN     PINB
 
 
-#define SNIFF_PIN      0 // used as OSZI
-
+//#define SNIFF_PIN      0 // used as OSZI
+#define LAMPEA_PIN      0
 #define LAMPEB_PIN      1
 
 

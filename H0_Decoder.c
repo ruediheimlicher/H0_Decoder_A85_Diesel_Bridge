@@ -199,10 +199,8 @@ void slaveinit(void)
    MOTORPORT |= (1<<MOTORB_PIN); // HI
    
    
-   //LAMPEDDR |= (1<<LAMPEA_PIN);  // Lampe A
-   //LAMPEPORT &= ~(1<<LAMPEA_PIN); // LO
-   SNIFFDDR &= ~(1<<SNIFF_PIN); // Eingang
-   SNIFFPORT &= ~(1<<SNIFF_PIN); // LO
+   LAMPEDDR |= (1<<LAMPEA_PIN);  // Lampe A
+   LAMPEPORT &= ~(1<<LAMPEA_PIN); // LO
    
    LAMPEDDR |= (1<<LAMPEB_PIN);  // Lampe B
    LAMPEPORT &= ~(1<<LAMPEB_PIN); // LO
@@ -623,7 +621,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                            //speed = speedlookup[speedcode];
                            if(speedcode && (speedcode < 2) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
                            {
-                              startspeed = (speedlookup[speedcode] + speedlookup[speedcode+1])/2; // Startimpuls
+                              startspeed = speedlookup[speedcode] + (speedlookup[speedcode+1] - speedlookup[speedcode])/4; // Startimpuls, etwas Zugabe
                               lokstatus |= (1<<STARTBIT);
                            }
                            oldspeed = speed; // behalten
@@ -734,7 +732,6 @@ int main (void)
       // Timing: loop: 40 us, takt 85us, mit if-teil 160 us
       // 2023: loop ca. 400us
       wdt_reset();
-  //    if(SNIFFPIN & (1 << SNIFF_PIN)) // Source OK
       {
          loopcount1++;
          if (loopcount1 >= speedchangetakt)
@@ -772,29 +769,6 @@ int main (void)
             }
          } // loopcount1 >= speedchangetakt
       }
-      /*
-      else  // source down, speed up
-      {
-         
-         //PORTA |= (1<<PA4);
-         //LAMPEPORT ^= (1<<LAMPEB_PIN);
-         if((lokstatus & (1<<RUNBIT)) ) // lok ist in bewegung
-         
-         {
-            //LAMPEPORT &= ~(1<<LAMPEB_PIN);
-            if(speedcode && (speedcode < 11))
-            {
-               speed = speedlookup[speedcode+4];
-            }
-            else  if(speedcode && (speedcode < 13))
-            {
-               speed = speedlookup[speedcode+2];
-               
-            }
-            //LAMPEPORT ^=(1<<LAMPEB_PIN);
-         }         
-      } // source not OK
-      */
       loopcount0++;
       if (loopcount0>=refreshtakt)
       {
@@ -809,12 +783,20 @@ int main (void)
             {
                pwmpin = MOTORB_PIN;
                richtungpin = MOTORA_PIN;
-               LAMPEPORT |= (1<<LAMPEB_PIN); // Lampen einstellen
+               if(lokstatus & (1<<FUNKTIONBIT))
+               {
+                  LAMPEPORT |= (1<<LAMPEB_PIN); // Lampe B ON
+               }
+               LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
             }
             else
             {
                pwmpin = MOTORA_PIN;
                richtungpin = MOTORB_PIN;
+               if(lokstatus & (1<<FUNKTIONBIT))
+               {
+                  LAMPEPORT |= (1<<LAMPEA_PIN); // Lampe B ON
+               }
                LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampen einstellen
             }
             MOTORPORT |= (1<<richtungpin); // Richtung setzen
