@@ -41,9 +41,6 @@
 #define MOTORDDR    DDRB
 #define MOTORPIN    PINB
 
-#define LAMPEPORT    PORTB
-#define LAMPEDDR     DDRB
-#define LAMPEPIN     PINB
 
 
 //PINS
@@ -54,13 +51,11 @@
 #define MOTORB_PIN      4
 
 
-#define SNIFFPORT    PORTB 
-#define SNIFFDDR     DDRB
-#define SNIFFPIN     PINB
-
+#define LAMPEPORT    PORTB
+#define LAMPEDDR     DDRB
+#define LAMPEPIN     PINB
 
 #define LAMPEA_PIN      0 // used as OSZI
-
 #define LAMPEB_PIN      1
 
 
@@ -68,11 +63,7 @@
 #define MOTOROUT        1
 #define MOTORINT0       2
 #define MOTORAUX        3
-#define LAMPE           4
 
-
-
-#define MOTORTEILER     1
 
 // Bits
 #define FUNKTIONOK      2
@@ -81,14 +72,6 @@
 
 
 // lokstatus-Bits
-//#define FUNKTION        0
-//#define OLDFUNKTION     1
-//#define FUNKTIONSTATUS  2
-
-
-
-#define PWMBIT          0
-
 
 #define ADDRESSBIT      0
 #define STARTBIT        1 // Startimpuls
