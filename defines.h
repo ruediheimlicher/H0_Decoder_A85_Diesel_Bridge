@@ -59,7 +59,7 @@
 #define SNIFFPIN     PINB
 
 
-#define SNIFF_PIN      0 // used as OSZI
+#define LAMPEA_PIN      0 // used as OSZI
 
 #define LAMPEB_PIN      1
 
@@ -87,13 +87,13 @@
 
 
 
-
+#define PWMBIT          0
 
 
 #define ADDRESSBIT      0
 #define STARTBIT        1 // Startimpuls
 #define DATABIT         2
-#define VORBIT          3 // eingestellte richtung
+#define PROGBIT         3 // Programmiermodus
 #define FUNKTIONBIT     4
 #define RUNBIT          5
 #define RICHTUNGBIT     6
