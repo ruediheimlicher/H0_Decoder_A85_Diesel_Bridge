@@ -109,6 +109,8 @@ volatile uint8_t   dimmcounter = 0; // LED dimmwertcounter
 volatile uint8_t   ledpwm = 0x40; // LED PWM 50%
 volatile uint8_t   ledstatus=0; // status LED
 
+volatile uint8_t   ledonpin = LAMPEA_PIN; // Stirnlampe ON
+volatile uint8_t   ledoffpin = LAMPEB_PIN; // Stirnlampe OFF
 
 
 
@@ -211,11 +213,11 @@ void slaveinit(void)
 void timer1(void)
 {
    TCCR1 = 0;
-   
+   TCNT1 = 0; 
    TCCR1 |= (1<<CTC1);
    TCCR1 |= (1 << CS11) | (1 << CS10);
-   OCR1C = 155;
-   OCR1A = OCR1C;
+   OCR1C = 15;
+   OCR1A = 15;
    // enable compare interrupt
    TIMSK |= (1 << TOIE1);
    TIMSK |= (1 << OCIE1A);
@@ -224,13 +226,23 @@ void timer1(void)
 ISR(TIMER1_OVF_vect)
 {
   // paketabstandcounterA++;
-   OSZIATOG;
+  // OSZIATOG;
+   if(lokstatus & (1<<FUNKTIONBIT))
+   {
+      LAMPEPORT |= (1<<ledonpin); // Lampe-PWM  ON
+   }
+   
 }
 
 ISR(TIMER1_COMPA_vect)
 {
-  
-   OSZIATOG;
+   if(lokstatus & (1<<FUNKTIONBIT))
+   {
+      LAMPEPORT &= ~(1<<ledonpin); // Lampe-PWM  ON
+   }
+
+   
+   //OSZIATOG;
    //paketabstandcounterA++;
 }
 
@@ -332,7 +344,8 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
    //OSZIALO; 
    //return;
    //paketabstandcounterA++;
-
+   
+   
    
    if (speed)
    {
@@ -356,15 +369,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
    // MARK: TIMER0 TIMER0_COMPA INT0
    if (INT0status & (1<<INT0_WAIT))
    {
-      //paketabstandcounterA++;
-      /*
-      if(paketabstandcounterA > 100)
-      {
-         paketabstandcounterA = 0;
-         paketabstandcounterB++;
-      }
-       */
-      waitcounter++; 
+       waitcounter++; 
       if (waitcounter > 2)// Impulsdauer > minimum
       {
          //OSZIAHI;
@@ -445,12 +450,8 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                }
             }
             
-            if (!(lokadresseB == LOK_ADRESSE))
-            {
-               
-            }
-         }
-         
+          }
+  /*       
          // Paket anzeigen
          if (INT0status & (1<<INT0_PAKET_B))
          {
@@ -461,7 +462,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
             //           TESTPORT |= (1<<TEST1);
          }
          
-         
+   */      
          if (tritposition < 17)
          {
             tritposition ++;
@@ -498,16 +499,18 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                      
                      if (deffunktion)
                      {
-                        if(!(lokstatus & (1<<FUNKTIONBIT))) // Funktionsbit noch nicht gesetzt
+                        if(!(lokstatus & (1<<FUNKTIONBIT))) // Funktionsbit noch nicht gesetzt > setzen
                         {
                            lokstatus |= (1<<FUNKTIONBIT);
+                           ledstatus |= (1<<LED_CHANGEBIT); // change setzen
                         }
                      }
                      else
                      {
-                        if((lokstatus & (1<<FUNKTIONBIT)))  // Funktionsbit schon gesetzt
+                        if((lokstatus & (1<<FUNKTIONBIT)))  // Funktionsbit schon gesetzt > loeschen
                         {
                            lokstatus &= ~(1<<FUNKTIONBIT);
+                           ledstatus |= (1<<LED_CHANGEBIT); // led-change setzen
                         }
                      }
                      
@@ -535,22 +538,12 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                            //oldspeed = speed; // behalten
                            //speed = 0;
                            
-                           lokstatus |= (1<<CHANGEBIT);
+                           lokstatus |= (1<<LOK_CHANGEBIT); // lok-change setzen
+                           ledstatus |= (1<<LED_CHANGEBIT); // led-change setzen
                         } // if !(lokstatus & (1<<RICHTUNGBIT)
                         
                         
-                        /* TODO
-                         else // repetition 0x03
-                         {
-                         richtungcounter++;
-                         if (richtungcounter > 4)
-                         {
-                         lokstatus &= ~(1<<RICHTUNGBIT); // Vorgang Richtungsbit wieder beenden, 
-                         richtungcounter = 0;
-                         }
-                         }
-                         */
-                     } // deflokdata == 0x03
+                         } // deflokdata == 0x03
                      else 
                      {  
                         lokstatus &= ~(1<<RICHTUNGBIT); // Vorgang Richtungsbit wieder beenden, 
@@ -705,6 +698,7 @@ int main (void)
    slaveinit();
    int0_init();
    timer0(4);
+   //timer1();
    uint16_t loopcount0=0;
    uint16_t loopcount1=0;
    
@@ -725,8 +719,27 @@ int main (void)
       // 2023: loop ca. 400us
       wdt_reset();
       {
-         dimmcounter++;
-           
+         
+         
+        // LAMPEPORT ^= (1<<ledonpin);
+         
+         if(lokstatus & (1<<FUNKTIONBIT))
+         {
+             
+            if(dimmcounter == 3)
+            {
+               LAMPEPORT |= (1<<ledonpin); // Lampe-PWM  ON
+            
+            }
+            dimmcounter++;
+            if(dimmcounter >= 8)
+            {
+               LAMPEPORT &= ~(1<<ledonpin); // Lampe-PWM  OFF
+               dimmcounter = 0;
+            }
+            
+         }
+         
          
          loopcount1++;
          if (loopcount1 >= speedchangetakt)
@@ -772,65 +785,43 @@ int main (void)
          //LAMPEPORT ^=(1<<LAMPEA_PIN);
          loopcount0=0;
          
-         if(lokstatus & (1<<CHANGEBIT)) // Motor-Pins tauschen
+         if(lokstatus & (1<<LOK_CHANGEBIT)) // Motor-Pins tauschen
          {
             if(pwmpin == MOTORA_PIN)
             {
                pwmpin = MOTORB_PIN;
                richtungpin = MOTORA_PIN;
-               /*
-               if (lokstatus & (1<<FUNKTIONBIT))
-               {
-                  LAMPEPORT |= (1<<LAMPEB_PIN); // Lampe B ON
-               }
-               else 
-               {
-                  LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
-               }
-                */
-               //LAMPEPORT &= ~(1<<LAMPEA_PIN);// Lampe A OFF
-            }
+               ledonpin = LAMPEA_PIN;
+               ledoffpin = LAMPEB_PIN;
+              }
             else
             {
                pwmpin = MOTORA_PIN;
                richtungpin = MOTORB_PIN;
-                /*
-               if (lokstatus & (1<<FUNKTIONBIT))
-               {
-                  LAMPEPORT |= (1<<LAMPEA_PIN); // Lampe A ON
-               }
-               else 
-               {
-                  LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
-               }
-                */
-               //LAMPEPORT &= ~(1<<LAMPEB_PIN); // // Lampe B OFF
+               ledonpin = LAMPEB_PIN;
+               ledoffpin = LAMPEA_PIN;
             }
             MOTORPORT |= (1<<richtungpin); // Richtung setzen
             
-              lokstatus &= ~(1<<CHANGEBIT);
+            lokstatus &= ~(1<<LOK_CHANGEBIT);
             
          } // if changebit
          
-         if(lokstatus & (1<<FUNKTIONBIT))
+         if(ledstatus & (1<<LED_CHANGEBIT))
          {
-            if(richtungpin == MOTORA_PIN)
+            if(lokstatus & (1<<FUNKTIONBIT))
             {
-               LAMPEPORT |= (1<<LAMPEA_PIN); // Lampe A ON
-               LAMPEPORT &= ~(1<<LAMPEB_PIN); // // Lampe B OFF
+               LAMPEPORT |= (1<<ledonpin); // Lampe  ON
+               LAMPEPORT &= ~(1<<ledoffpin); // // Lampe  OFF
+               
             }
-            else if(richtungpin == MOTORB_PIN)
+            else
             {
-               LAMPEPORT |= (1<<LAMPEB_PIN); // Lampe B ON
-               LAMPEPORT &= ~(1<<LAMPEA_PIN); // // Lampe A OFF
-            }
-         }
-         else
-         {
                LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
                LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
+            }
+            ledstatus &= ~(1<<LED_CHANGEBIT);
          }
-           
       } // loopcount0>=refreshtakt
       //OSZIAHI;
    }//while

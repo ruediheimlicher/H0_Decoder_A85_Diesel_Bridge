@@ -46,6 +46,7 @@
 //PINS
 // von Decoder84
 
+#define LED_CHANGEBIT    7
 
 #define MOTORA_PIN      3
 #define MOTORB_PIN      4
@@ -80,7 +81,7 @@
 #define FUNKTIONBIT     4
 #define RUNBIT          5
 #define RICHTUNGBIT     6
-#define CHANGEBIT       7  
+#define LOK_CHANGEBIT       7  
 
 #define STARTDELAY      100
 
