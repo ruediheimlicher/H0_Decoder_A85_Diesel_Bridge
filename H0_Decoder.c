@@ -24,7 +24,7 @@
 
 //***********************************
 						
-uint8_t  LOK_ADRESSE = 0x0F; //	
+uint8_t  LOK_ADRESSE = 0x0F; //	0000 1111 (eingestellt im Sender als 0011)
 //									
 //***********************************
 
@@ -140,18 +140,16 @@ volatile uint16_t   wdtcounter = 0;
 volatile uint8_t   taskcounter = 0;
 
 // linear
-//volatile uint8_t   speedlookup[15] = {0,18,36,54,72,90,108,126,144,162,180,198,216,234,252};
+//volatile uint8_t   speedlookup0[15] = {0,18,36,54,72,90,108,126,144,162,180,198,216,234,252};
 
 
-//volatile uint8_t   speedlookup[15] = {0,10,20,30,40,50,60,70,80,90,100,110,120,130,140};
+//volatile uint8_t   speedlookup1[15] = {0,10,20,30,40,50,60,70,80,90,100,110,120,130,140};
 // linear 100
-//volatile uint8_t   speedlookup[15] = {0,7,14,21,28,35,42,50,57,64,71,78,85,92,100};
+//volatile uint8_t   speedlookup2[15] = {0,7,14,21,28,35,42,50,57,64,71,78,85,92,100};
 
-// linear 80
-//volatile uint8_t   speedlookup[15] = {0,5,11,17,22,28,34,40,45,51,57,62,68,74,80};
 
-// linear mit offset 30
-//volatile uint8_t   speedlookup[15] = {0,33,37,40,44,47,51,55,58,62,65,69,72,76,80};
+// linear 80 mit offset 30
+//volatile uint8_t   speedlookup3[15] = {0,33,37,40,44,47,51,55,58,62,65,69,72,76,80};
 
 // linear mit offset 22  Diesel
 //volatile uint8_t   speedlookup[15] = {0,26,30,34,38,42,46,51,55,59,63,67,71,75,80};
@@ -175,6 +173,19 @@ volatile uint8_t   speedlookup[15] = {0,40,64,81,95,105,114,122,129,136,141,146,
 
 // log 44/120
 //volatile uint8_t   speedlookup[15] = {0,45,46,48,51,55,59,64,70,76,84,92,100,110,120};
+
+uint8_t speedlookuptable[8][15] =
+{
+   {0,18,36,54,72,90,108,126,144,162,180,198,216,234,252},
+   {0,10,20,30,40,50,60,70,80,90,100,110,120,130,140},
+   {0,7,14,21,28,35,42,50,57,64,71,78,85,92,100},
+   {0,33,37,40,44,47,51,55,58,62,65,69,72,76,80},
+   
+   {0,25,40,51,59,66,71,76,81,85,88,91,94,97,100},
+   {0,45,46,48,51,55,59,64,70,76,84,92,100,110,120},
+   {0,35,56,71,83,92,100,107,113,119,123,128,132,136,140},
+   {0,40,64,81,95,105,114,122,129,136,141,146,151,155,160}
+};
 
 volatile uint8_t   maxspeed =  252;
 
@@ -205,6 +216,8 @@ void slaveinit(void)
     
    LAMPEDDR |= (1<<LAMPEB_PIN);  // Lampe B
    LAMPEPORT &= ~(1<<LAMPEB_PIN); // LO
+   
+
    
    maxspeed =  252; //speedlookup[14];
    //initADC(0);
@@ -380,11 +393,15 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
             {
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
                {
-                  lokadresseA |= (1<<tritposition); // bit ist 1
+                  lokadresseA &= ~(1<<tritposition); // bit ist 0
+                  //lokadresseA |= (1<<tritposition); // bit ist 1
+                  
                }
                else // 
                {
-                  lokadresseA &= ~(1<<tritposition); // bit ist 0
+                  lokadresseA |= (1<<tritposition); // bit ist 1
+                  //lokadresseA &= ~(1<<tritposition); // bit ist 0
+                  
                }
             }
             else if (tritposition < 10) // Funktion
@@ -419,11 +436,15 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
                {
-                  lokadresseB |= (1<<tritposition); // bit ist 1
+                  lokadresseB &= ~(1<<tritposition); // bit ist 0
+                  //lokadresseB |= (1<<tritposition); // bit ist 1
+                  
                }
                else // 
                {
-                  lokadresseB &= ~(1<<tritposition); // bit ist 0
+                  lokadresseB |= (1<<tritposition); // bit ist 1
+                  //lokadresseB &= ~(1<<tritposition); // bit ist 0
+                  
                }
             }
             else if (tritposition < 10) // bit 8,9: funktion
@@ -794,7 +815,7 @@ int main (void)
                ledonpin = LAMPEA_PIN;
                ledoffpin = LAMPEB_PIN;
               }
-            else
+            else // auch default
             {
                pwmpin = MOTORA_PIN;
                richtungpin = MOTORB_PIN;
@@ -817,6 +838,7 @@ int main (void)
             }
             else
             {
+               // beide lampen OFF
                LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
                LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
             }
