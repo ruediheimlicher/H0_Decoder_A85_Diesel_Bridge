@@ -23,8 +23,12 @@
 
 
 //***********************************
-						
-uint8_t  LOK_ADRESSE = 0x0F; //	0000 1111 (eingestellt im Sender als 0011)
+
+//Diesel RH
+// uint8_t  LOK_ADRESSE = 0x0F; //	0000 1111 (eingestellt im Sender als 0011)
+
+// Diesel CH
+uint8_t  LOK_ADRESSE = 0xF3; //   0000 1111 (eingestellt im Sender als 0011)
 //									
 //***********************************
 
