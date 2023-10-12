@@ -217,6 +217,11 @@ void slaveinit(void)
    LAMPEDDR |= (1<<LAMPEB_PIN);  // Lampe B
    LAMPEPORT &= ~(1<<LAMPEB_PIN); // LO
    
+   // default
+   pwmpin = MOTORA_PIN;
+   richtungpin = MOTORB_PIN;
+   ledonpin = LAMPEA_PIN;
+   ledoffpin = LAMPEB_PIN;
 
    
    maxspeed =  252; //speedlookup[14];
@@ -812,15 +817,15 @@ int main (void)
             {
                pwmpin = MOTORB_PIN;
                richtungpin = MOTORA_PIN;
-               ledonpin = LAMPEA_PIN;
-               ledoffpin = LAMPEB_PIN;
+               ledonpin = LAMPEB_PIN;
+               ledoffpin = LAMPEA_PIN;
               }
             else // auch default
             {
                pwmpin = MOTORA_PIN;
                richtungpin = MOTORB_PIN;
-               ledonpin = LAMPEB_PIN;
-               ledoffpin = LAMPEA_PIN;
+               ledonpin = LAMPEA_PIN;
+               ledoffpin = LAMPEB_PIN;
             }
             MOTORPORT |= (1<<richtungpin); // Richtung setzen
             
