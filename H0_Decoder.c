@@ -404,13 +404,14 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                {
                   //lokadresseA &= ~(1<<tritposition); // bit ist 0
                   lokadresseA |= (1<<tritposition); // bit ist 1
+                  //lokadresseB |= (1<<(7-tritposition)); // bit ist 1 INV
                   
                }
                else // 
                {
                   //lokadresseA |= (1<<tritposition); // bit ist 1
                   lokadresseA &= ~(1<<tritposition); // bit ist 0
-                  
+                  //lokadresseB &= ~(1<<(7-tritposition)); // bit ist 0
                }
             }
             else if (tritposition < 10) // Funktion
@@ -447,12 +448,14 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                {
                   //lokadresseB &= ~(1<<tritposition); // bit ist 0
                   lokadresseB |= (1<<tritposition); // bit ist 1
+                  //lokadresseB |= (1<<(7-tritposition)); // bit ist 1 INV
                   
                }
                else // 
                {
                   //lokadresseB |= (1<<tritposition); // bit ist 1
                   lokadresseB &= ~(1<<tritposition); // bit ist 0
+                  //lokadresseB &= ~(1<<(7-tritposition)); // bit ist 0
                   
                }
             }
