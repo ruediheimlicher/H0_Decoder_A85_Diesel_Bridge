@@ -201,6 +201,9 @@ uint16_t speedchangetakt = 0x350; // takt fuer beschleunigen/bremsen
 
 volatile uint8_t loktyptable[4];
 
+volatile uint8_t speedindex = 7;
+
+
 void slaveinit(void)
 {
    //OSZIPORT |= (1<<OSZIA);	//Pin 6 von PORT D als Ausgang fuer OSZI A
@@ -635,17 +638,17 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                                  break;
                                  
                            }
-                           //speed = speedlookup[speedcode];
+                           //speed = speedlookuptable[speedindex][speedcode];
                            if(speedcode && (speedcode < 2) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
                            {
                               
-                              startspeed = speedlookup[speedcode] + (speedlookup[speedcode+1] - speedlookup[speedcode])/4; // Startimpuls, etwas Zugabe
+                              startspeed = speedlookuptable[speedindex][speedcode] + (speedlookup[speedcode+1] - speedlookuptable[speedindex][speedcode])/4; // Startimpuls, etwas Zugabe
                               lokstatus |= (1<<STARTBIT);
                            }
                            oldspeed = speed; // behalten
                            
                            speedintervall = (newspeed - speed)>>2; // 4 teile
-                           newspeed = speedlookup[speedcode]; // zielwert
+                           newspeed = speedlookuptable[speedindex][speedcode]; // zielwert
                            if(speedcode > 0)
                            {
                               lokstatus |= (1<<RUNBIT); // lok in bewegung
