@@ -28,7 +28,7 @@
 // uint8_t  LOK_ADRESSE = 0x0F; //	0000 1111 (eingestellt im Sender als 0011)
 
 // Diesel CH
-uint8_t  LOK_ADRESSE = 0xF3; //   0000 1111 (eingestellt im Sender als 0011)
+uint8_t  LOK_ADRESSE = 0xC3; //   1100 0011 (eingestellt im Sender als 1001)
 //									
 //***********************************
 
@@ -86,7 +86,6 @@ volatile uint8_t   rawfunktionB = 0;
 volatile uint8_t   deffunktiondata = 0;
 
 volatile uint8_t   oldlokdata = 0;
-//volatile uint8_t   lokdata = 0;
 volatile uint8_t   deflokdata = 0;
 
 //uint8_t   paketabstandcounterA = 0; // 
@@ -178,9 +177,10 @@ volatile uint8_t   speedlookup[15] = {0,40,64,81,95,105,114,122,129,136,141,146,
 // log 44/120
 //volatile uint8_t   speedlookup[15] = {0,45,46,48,51,55,59,64,70,76,84,92,100,110,120};
 
-uint8_t speedlookuptable[8][15] =
+uint8_t speedlookuptable[10][15] =
 {
    {0,18,36,54,72,90,108,126,144,162,180,198,216,234,252},
+   {0,30,40,50,60,70,80,90,100,110,120,130,140,150,160},
    {0,10,20,30,40,50,60,70,80,90,100,110,120,130,140},
    {0,7,14,21,28,35,42,50,57,64,71,78,85,92,100},
    {0,33,37,40,44,47,51,55,58,62,65,69,72,76,80},
@@ -188,10 +188,11 @@ uint8_t speedlookuptable[8][15] =
    {0,25,40,51,59,66,71,76,81,85,88,91,94,97,100},
    {0,45,46,48,51,55,59,64,70,76,84,92,100,110,120},
    {0,35,56,71,83,92,100,107,113,119,123,128,132,136,140},
-   {0,40,64,81,95,105,114,122,129,136,141,146,151,155,160}
+   {0,40,64,81,95,105,114,122,129,136,141,146,151,155,160},
+   {0,46,73,92,106,119,129,138,146,153,159,165,170,175,180}
 };
 
-volatile uint8_t   maxspeed =  252;
+
 
 volatile uint8_t   lastDIR =  0;
 uint8_t loopledtakt = 0x40;
@@ -201,8 +202,9 @@ uint16_t speedchangetakt = 0x350; // takt fuer beschleunigen/bremsen
 
 volatile uint8_t loktyptable[4];
 
-volatile uint8_t speedindex = 7;
+volatile uint8_t speedindex = 9;
 
+volatile uint8_t   maxspeed =  252;//prov.
 
 void slaveinit(void)
 {
@@ -225,13 +227,21 @@ void slaveinit(void)
    LAMPEPORT &= ~(1<<LAMPEB_PIN); // LO
    
    // default
+   
    pwmpin = MOTORA_PIN;
    richtungpin = MOTORB_PIN;
    ledonpin = LAMPEA_PIN;
    ledoffpin = LAMPEB_PIN;
+   
+   
+ //  pwmpin = MOTORB_PIN;
+ //  richtungpin = MOTORA_PIN;
+ //  ledonpin = LAMPEB_PIN;
+ //  ledoffpin = LAMPEA_PIN;
+
 
    
-   maxspeed =  252; //speedlookup[14];
+   maxspeed =  speedlookuptable[speedindex][14];
    //initADC(0);
 }
 
@@ -407,14 +417,12 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                {
                   //lokadresseA &= ~(1<<tritposition); // bit ist 0
                   lokadresseA |= (1<<tritposition); // bit ist 1
-                  //lokadresseB |= (1<<(7-tritposition)); // bit ist 1 INV
                   
                }
                else // 
                {
                   //lokadresseA |= (1<<tritposition); // bit ist 1
                   lokadresseA &= ~(1<<tritposition); // bit ist 0
-                  //lokadresseB &= ~(1<<(7-tritposition)); // bit ist 0
                }
             }
             else if (tritposition < 10) // Funktion

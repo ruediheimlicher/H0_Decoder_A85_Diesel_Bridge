@@ -56,8 +56,8 @@
 #define LAMPEDDR     DDRB
 #define LAMPEPIN     PINB
 
-#define LAMPEA_PIN      0 // used as OSZI
-#define LAMPEB_PIN      1
+#define LAMPEA_PIN      1 // used as OSZI
+#define LAMPEB_PIN      0
 
 
 #define MOTORDIR        0
