@@ -59,6 +59,8 @@ uint8_t LOK_TYP = LOK_TYP_DIESEL;
 volatile uint8_t   INT0status=0x00;            
 volatile uint8_t   pausestatus=0x00;
 
+volatile uint8_t   ablaufstatus=0x00; // Startdlay
+
 
 volatile uint8_t   address=0x00; 
 volatile uint8_t   data=0x00;   
@@ -141,6 +143,8 @@ volatile uint8_t   motorPWM_n=0;
 volatile uint16_t   wdtcounter = 0;
 
 volatile uint8_t   taskcounter = 0;
+
+volatile uint16_t   startwaitcounter = STARTWAIT;
 
 // linear
 //volatile uint8_t   speedlookup0[15] = {0,18,36,54,72,90,108,126,144,162,180,198,216,234,252};
@@ -532,9 +536,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                   if (lokadresseB == LOK_ADRESSE)
                   {
                       // Daten uebernehmen
-                     //   STATUSPORT |= (1<<DATAOK); // LED ON
-                     //  STATUSPORT |= (1<<ADDRESSOK); // LED ON
-                     
+                       
                      lokstatus |= (1<<ADDRESSBIT);
                      deflokadresse = lokadresseB;
                      //deffunktion = (rawdataB & 0x03); // bit 0,1 funktion als eigene var
@@ -756,6 +758,7 @@ int main (void)
    wdt_reset();
    ledpwm = LEDPWM;
    minspeed = speedlookup[0];
+   ablaufstatus |= (1<<FIRSTRUN_BIT);
    sei();
    while (1)
    {   
@@ -763,10 +766,7 @@ int main (void)
       // 2023: loop ca. 400us
       wdt_reset();
       {
-         
-         
-        // LAMPEPORT ^= (1<<ledonpin);
-         
+          
          if(lokstatus & (1<<FUNKTIONBIT))
          {
              
@@ -828,6 +828,22 @@ int main (void)
          //LOOPLEDPORT ^= (1<<LOOPLED); 
          //LAMPEPORT ^=(1<<LAMPEA_PIN);
          loopcount0=0;
+         
+         // startdelay 
+         if(startwaitcounter)
+         {
+            LAMPEPORT ^= (1<<LAMPEA_PIN);
+            startwaitcounter--;
+            if (startwaitcounter == 0)
+            {
+               ablaufstatus &= ~(1<<FIRSTRUN_BIT); // Startdelay abgelaufen
+               ablaufstatus |= (1<<LOOP_BIT); // loop startet
+            }
+         }
+         if (ablaufstatus &(1<<FIRSTRUN_BIT))
+         {
+            break;
+         }
          
          if(lokstatus & (1<<LOK_CHANGEBIT)) // Motor-Pins tauschen
          {

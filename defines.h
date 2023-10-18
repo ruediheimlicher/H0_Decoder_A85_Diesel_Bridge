@@ -60,16 +60,15 @@
 #define LAMPEB_PIN      0
 
 
-#define MOTORDIR        0
-#define MOTOROUT        1
-#define MOTORINT0       2
-#define MOTORAUX        3
 
 
 // Bits
-#define FUNKTIONOK      2
-#define ADDRESSOK       3
-#define DATAOK          4
+
+// ablaufstatus
+
+#define FIRSTRUN_BIT 0
+#define LOOP_BIT 0
+
 
 
 // lokstatus-Bits
@@ -108,5 +107,6 @@
 
 #define FIRSTRUN_END 80
 
+#define STARTWAIT 100
 
 #endif /* defines_h */
