@@ -830,6 +830,7 @@ int main (void)
          loopcount0=0;
          
          // startdelay 
+         /*
          if(startwaitcounter)
          {
             LAMPEPORT ^= (1<<LAMPEA_PIN);
@@ -842,9 +843,9 @@ int main (void)
          }
          if (ablaufstatus &(1<<FIRSTRUN_BIT))
          {
-            break;
+            //break;
          }
-         
+         */
          if(lokstatus & (1<<LOK_CHANGEBIT)) // Motor-Pins tauschen
          {
             if(pwmpin == MOTORA_PIN)
