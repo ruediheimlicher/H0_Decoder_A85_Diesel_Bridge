@@ -60,16 +60,21 @@
 #define LAMPEB_PIN      0
 
 
-#define MOTORDIR        0
-#define MOTOROUT        1
-#define MOTORINT0       2
-#define MOTORAUX        3
+//#define MOTORDIR        0
+//#define MOTOROUT        1
+//#define MOTORINT0       2
+//#define MOTORAUX        3
 
 
 // Bits
-#define FUNKTIONOK      2
-#define ADDRESSOK       3
-#define DATAOK          4
+//#define FUNKTIONOK      2
+//#define ADDRESSOK       3
+//#define DATAOK          4
+
+// ablaufstatus
+
+#define FIRSTRUN_BIT 0
+#define LOOP_BIT 0
 
 
 // lokstatus-Bits
@@ -84,6 +89,9 @@
 #define LOK_CHANGEBIT       7  
 
 #define STARTDELAY      100
+
+#define STARTWAIT 100
+
 
 #define TRIT0 0
 #define TRIT1 1
