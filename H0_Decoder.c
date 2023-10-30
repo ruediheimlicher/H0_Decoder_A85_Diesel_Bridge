@@ -28,7 +28,8 @@
  //uint8_t  LOK_ADRESSE = 0x0F; //	0000 1111 (eingestellt im Sender als 1100)
 
 // Diesel CH
-uint8_t  LOK_ADRESSE = 0xC3; //   1100 0011 (eingestellt im Sender als 1001)
+//uint8_t  LOK_ADRESSE = 0xC3; //   1100 0011 (eingestellt im Sender als 1001)
+uint8_t  LOK_ADRESSE = 0xCC;
 //									
 //***********************************
 
@@ -145,41 +146,6 @@ volatile uint16_t   wdtcounter = 0;
 
 volatile uint8_t   taskcounter = 0;
 
-// linear
-//volatile uint8_t   speedlookup0[15] = {0,18,36,54,72,90,108,126,144,162,180,198,216,234,252};
-
-
-//volatile uint8_t   speedlookup1[15] = {0,10,20,30,40,50,60,70,80,90,100,110,120,130,140};
-// linear 100
-//volatile uint8_t   speedlookup2[15] = {0,7,14,21,28,35,42,50,57,64,71,78,85,92,100};
-
-
-// linear 80 mit offset 30
-//volatile uint8_t   speedlookup3[15] = {0,33,37,40,44,47,51,55,58,62,65,69,72,76,80};
-
-// linear mit offset 22  Diesel
-//volatile uint8_t   speedlookup[15] = {0,26,30,34,38,42,46,51,55,59,63,67,71,75,80};
-
-
-
-// logarithmisch 180
-//volatile uint8_t   speedlookup[14] = {0,46,73,92,106,119,129,138,146,153,159,165,170,175,180};
-
-//log 160
-//volatile uint8_t   speedlookup[15] = {0,40,64,81,95,105,114,122,129,136,141,146,151,155,160};
-
-// log 140
-//volatile uint8_t   speedlookup[14] = {0,35,56,71,83,92,100,107,113,119,123,128,132,136,140};
-
-// log 100
-//volatile uint8_t   speedlookup[14] = {0,25,40,51,59,66,71,76,81,85,88,91,94,97,100};
-
-// log 36/120
-//volatile uint8_t   speedlookup[15] = {0,37,38,41,44,48,52,58,64,72,80,89,98,109,120};
-
-// log 44/120
-//volatile uint8_t   speedlookup[15] = {0,45,46,48,51,55,59,64,70,76,84,92,100,110,120};
-
 uint8_t speedlookuptable[10][15] =
 {
    {0,18,36,54,72,90,108,126,144,162,180,198,216,234,252},
@@ -188,11 +154,11 @@ uint8_t speedlookuptable[10][15] =
    {0,7,14,21,28,35,42,50,57,64,71,78,85,92,100},
    {0,33,37,40,44,47,51,55,58,62,65,69,72,76,80},
    
-   {0,25,40,51,59,66,71,76,81,85,88,91,94,97,100},
-   {0,45,46,48,51,55,59,64,70,76,84,92,100,110,120},
-   {0,35,56,71,83,92,100,107,113,119,123,128,132,136,140},
-   {0,40,64,81,95,105,114,122,129,136,141,146,151,155,160},
-   {0,46,73,92,106,119,129,138,146,153,159,165,170,175,180}
+   {0,41,42,44,47,51,56,61,67,74,82,90,99,109,120},
+   {0,41,43,45,49,54,60,66,74,82,92,103,114,127,140},
+   {0,41,44,48,53,59,67,77,87,99,113,128,144,161,180},
+   {0,42,45,50,57,65,75,87,101,116,134,153,173,196,220},
+   {0,42,45,51,58,68,79,93,108,125,144,165,188,213,240}
 };
 
 // {0,41,44,48,53,59,67,77,87,99,113,128,144,161,180};
@@ -205,7 +171,7 @@ uint16_t speedchangetakt = 0x350; // takt fuer beschleunigen/bremsen
 
 volatile uint8_t loktyptable[4];
 
-volatile uint8_t speedindex = 9;
+volatile uint8_t speedindex = 7;
 
 volatile uint8_t   maxspeed =  252;//prov.
 
@@ -214,8 +180,8 @@ void slaveinit(void)
    //OSZIPORT |= (1<<OSZIA);	//Pin 6 von PORT D als Ausgang fuer OSZI A
    //OSZIDDR |= (1<<OSZIA);	//Pin 7 von PORT D als Ausgang fuer SOSZI B
    
-   //   LOOPLEDDDR |=(1<<LOOPLED); // HI
-   //   LOOPLEDPORT |=(1<<LOOPLED);
+      //LOOPLEDDDR |=(1<<LOOPLED); // HI
+      //LOOPLEDPORT |=(1<<LOOPLED);
       
    MOTORDDR |= (1<<MOTORA_PIN);  // Output Motor A 
    MOTORPORT |= (1<<MOTORA_PIN); // HI
@@ -410,10 +376,12 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
        waitcounter++; 
       if (waitcounter > 2)// Impulsdauer > minimum
       {
+         
          //OSZIAHI;
          INT0status &= ~(1<<INT0_WAIT);
          if (INT0status & (1<<INT0_PAKET_A))
          {
+            
             if (tritposition < 8) // Adresse)
             {
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
@@ -455,6 +423,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
          
          if (INT0status & (1<<INT0_PAKET_B))
          {
+            
             if (tritposition < 8) // Adresse)
             {
                
@@ -534,6 +503,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                {
                   if (lokadresseB == LOK_ADRESSE)
                   {
+                     //LAMPEPORT ^=(1<<LAMPEA_PIN);
                       // Daten uebernehmen
                      //   STATUSPORT |= (1<<DATAOK); // LED ON
                      //  STATUSPORT |= (1<<ADDRESSOK); // LED ON
@@ -653,7 +623,10 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                            if(speedcode && (speedcode < 2) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
                            {
                               
-                              startspeed = speedlookuptable[speedindex][speedcode] + (speedlookuptable[speedindex][speedcode+1] - speedlookuptable[speedindex][speedcode])/8*3; // Startimpuls, etwas Zugabe
+                              //startspeed = speedlookuptable[speedindex][speedcode] + (speedlookuptable[speedindex][speedcode+1] - speedlookuptable[speedindex][speedcode])/8*3; // Startimpuls, etwas Zugabe
+                              
+                              // von A84
+                              startspeed = speedlookuptable[speedindex][speedcode] + 1;
                               lokstatus |= (1<<STARTBIT);
                            }
                            oldspeed = speed; // behalten
@@ -790,6 +763,7 @@ int main (void)
       if (loopcount1 >= speedchangetakt)
       {
          //LOOPLEDPORT ^= (1<<LOOPLED); // Kontrolle lastDIR
+         //LAMPEPORT ^=(1<<LAMPEA_PIN);
          loopcount1 = 0;
          //OSZIATOG;
          // speed var
