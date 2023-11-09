@@ -35,9 +35,9 @@ uint8_t  LOK_ADRESSE = 0xCC;
 uint8_t LOK_TYP = LOK_TYP_DIESEL;
 /*
  commands
- LO     0x0202  // 0000001000000010
- OPEN   0x02FE  // 0000001011111110
- HI     0xFEFE  // 1111111011111110
+ LO     0x0202  // 0000 0010 0000 0010
+ OPEN   0x02FE  // 0000 0010 1111 1110
+ HI     0xFEFE  // 1111 1110 1111 1110
  */
 
 #define INPORT   PORTB  // Input signal auf INT0
@@ -60,7 +60,7 @@ volatile uint8_t   INT0status=0x00;
 volatile uint8_t   pausestatus=0x00;
 
 volatile uint8_t   ablaufstatus=0x00; // Startdlay
-volatile uint16_t   startwaitcounter = STARTWAIT;
+//volatile uint16_t   startwaitcounter = STARTWAIT;
 
 
 volatile uint8_t   address=0x00; 
@@ -145,6 +145,7 @@ volatile uint16_t   wdtcounter = 0;
 
 volatile uint8_t   taskcounter = 0;
 
+volatile uint8_t   speedlookup[15] = {};
 uint8_t speedlookuptable[10][15] =
 {
    {0,18,36,54,72,90,108,126,144,162,180,198,216,234,252},
@@ -164,7 +165,7 @@ uint8_t speedlookuptable[10][15] =
 
 volatile uint8_t   lastDIR =  0;
 uint8_t loopledtakt = 0x40;
-uint8_t refreshtakt = 0x40;
+uint8_t refreshtakt = 0x45;
 uint16_t speedchangetakt = 0x350; // takt fuer beschleunigen/bremsen
 
 
@@ -200,12 +201,9 @@ void slaveinit(void)
    richtungpin = MOTORB_PIN;
    ledonpin = LAMPEA_PIN;
    ledoffpin = LAMPEB_PIN;
+   LAMPEPORT |=(1<<LAMPEA_PIN);
+   LAMPEPORT &= ~(1<<LAMPEB_PIN);
    
-   
- //  pwmpin = MOTORB_PIN;
- //  richtungpin = MOTORA_PIN;
- //  ledonpin = LAMPEB_PIN;
- //  ledoffpin = LAMPEA_PIN;
 
 
    
@@ -221,7 +219,7 @@ void int0_init(void)
    //INT0status |= (1<<INT0_RISING);
    INT0status = 0;
    
-   //INT0status |= (1<<INT0_WAIT);
+   INT0status |= (1<<INT0_WAIT);
 }
 
 
@@ -325,6 +323,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
       motorPWM = 0;
       
    }
+   
    
    
    // MARK: TIMER0 TIMER0_COMPA INT0
@@ -581,15 +580,21 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                             
                             if(speedcode && (speedcode < 2) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
                             {
-                               startspeed = speedlookuptable[speedindex][speedcode] + 1; // kleine Zugabe
-                                lokstatus |= (1<<STARTBIT);
+                               //startspeed = speedlookuptable[speedindex][speedcode] + 1; // kleine Zugabe
+                               startspeed = speedlookup[speedcode] + 1; // kleine Zugabe
+                               
+                               lokstatus |= (1<<STARTBIT);
                             }
 
                            oldspeed = speed; // behalten
                         
-                           speedintervall = (newspeed - speed)>>2; // 8 teile
+                           speedintervall = (newspeed - speed)>>2; // 4 teile
                             
-                           newspeed = speedlookuptable[speedindex][speedcode]; // zielwert
+                           
+                            //newspeed = speedlookuptable[speedindex][speedcode]; // zielwert
+                            newspeed = speedlookup[speedcode]; // zielwert
+                           
+                            
                             if(speedcode > 0)
                             {
                                lokstatus |= (1<<RUNBIT); // lok in bewegung
@@ -684,10 +689,10 @@ int main (void)
    // https://bigdanzblog.wordpress.com/2015/07/20/resetting-rebooting-attiny85-with-watchdog-timer-wdt/
    wdt_reset();
    ledpwm = LEDPWM;
-   minspeed = speedlookuptable[speedindex][0];
-   maxspeed = speedlookuptable[speedindex][14];
+   //minspeed = speedlookuptable[speedindex][0];
+   //maxspeed = speedlookuptable[speedindex][14];
    
-   volatile uint8_t   speedlookup[15] = {};
+   
    uint8_t i = 0;
    for (i=0;i<15;i++)
    {
@@ -706,7 +711,7 @@ int main (void)
          
          if(lokstatus & (1<<FUNKTIONBIT))
          {
-            
+            /*
             if(dimmcounter == 3)
             {
                LAMPEPORT |= (1<<ledonpin); // Lampe-PWM  ON
@@ -718,7 +723,7 @@ int main (void)
                LAMPEPORT &= ~(1<<ledonpin); // Lampe-PWM  OFF
                dimmcounter = 0;
             }
-            
+            */
          }
 
          
@@ -730,10 +735,11 @@ int main (void)
             loopcount1 = 0;
             //OSZIATOG;
             
+            
             // speed var
-            if((newspeed > oldspeed)) // beschleunigen
+            if((newspeed > oldspeed)) // beschleunigen, speedintervall positiv
             {
-               if(speed < newspeed)
+               if(speed < (newspeed - speedintervall))
                {
                   if((startspeed > speed) && (lokstatus & (1<<STARTBIT))) // Startimpuls
                   {
@@ -748,9 +754,9 @@ int main (void)
                   speed = newspeed;
                }
             }
-            else if((newspeed < oldspeed)) // bremsen
+            else if((newspeed < oldspeed)) // bremsen, speedintervall negativ
             {
-               if((speed > newspeed) && ((speed + speedintervall) > 0))
+               if((speed > newspeed) && ((speed + 2*speedintervall) > 0))
                {
                   speed += 2*speedintervall;
                }
@@ -760,6 +766,7 @@ int main (void)
                }
             }
             // end speed var
+            
          } // loopcount1 >= speedchangetakt
          
       }// Source OK
@@ -779,15 +786,43 @@ int main (void)
             {
                pwmpin = MOTORB_PIN;
                richtungpin = MOTORA_PIN;
-               ledonpin = LAMPEB_PIN;
-               ledoffpin = LAMPEA_PIN;
+               //ledonpin = LAMPEB_PIN;
+              // ledoffpin = LAMPEA_PIN;
+               
+               if(lokstatus & (1<<FUNKTIONBIT))
+               {
+                  
+                  LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
+                  LAMPEPORT |= (1<<LAMPEA_PIN); // Lampe A OFF
+               }
+               else
+               {
+                  // beide lampen OFF
+                  LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
+                  LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
+
+               }
+
             }
             else // auch default
             {
                pwmpin = MOTORA_PIN;
                richtungpin = MOTORB_PIN;
-               ledonpin = LAMPEA_PIN;
-               ledoffpin = LAMPEB_PIN;
+               //ledonpin = LAMPEA_PIN;
+               //ledoffpin = LAMPEB_PIN;
+               if(lokstatus & (1<<FUNKTIONBIT))
+               {
+                  
+                  LAMPEPORT |= (1<<LAMPEB_PIN); // Lampe B OFF
+                  LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
+               }
+               else 
+               {
+                  // beide lampen OFF
+                  LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
+                  LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
+               }
+
             }
             MOTORPORT |= (1<<richtungpin); // Richtung setzen
             
@@ -802,15 +837,15 @@ int main (void)
          {
             if(lokstatus & (1<<FUNKTIONBIT))
             {
-               LAMPEPORT |= (1<<ledonpin); // Lampe  ON
-               LAMPEPORT &= ~(1<<ledoffpin); // // Lampe  OFF
+            //   LAMPEPORT |= (1<<ledonpin); // Lampe  ON
+             //  LAMPEPORT &= ~(1<<ledoffpin); // // Lampe  OFF
                
             }
             else
             {
                // beide lampen OFF
-               LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
-               LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
+            //   LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
+            //   LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
             }
             ledstatus &= ~(1<<LED_CHANGEBIT);
          }
@@ -818,7 +853,7 @@ int main (void)
          
          
          
-             
+     /*        
          if (deflokadresse == LOK_ADRESSE)
          {
             //OSZIATOG;
@@ -827,7 +862,7 @@ int main (void)
          {
             //OSZIAHI;
          }
-         
+      */   
          
       }  // loopcount0>=refreshtakt
       
