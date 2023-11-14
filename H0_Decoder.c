@@ -16,8 +16,8 @@
 #include "defines.h"
 
 
-#define LOK_TYP_DIESEL  1
-#define LOK_TYP_RE44  2
+//#define LOK_TYP_DIESEL  1
+//#define LOK_TYP_RE44  2
 
 
 
@@ -32,7 +32,7 @@ uint8_t  LOK_ADRESSE = 0xCC;
 //									
 //***********************************
 
-uint8_t LOK_TYP = LOK_TYP_DIESEL;
+//uint8_t LOK_TYP = LOK_TYP_DIESEL;
 /*
  commands
  LO     0x0202  // 0000 0010 0000 0010
@@ -247,7 +247,7 @@ void timer0 (uint8_t wert)
   // sei();
 } 
 
-#pragma mark INT0
+// MARK: INT0_vect
 ISR(INT0_vect) 
 {
    //OSZIATOG;
@@ -269,25 +269,8 @@ ISR(INT0_vect)
       
       waitcounter = 0;
       tritposition = 0;
-      //lokadresse = 0;
-      //lokdata = 0;
-      funktion = 0;
-      //deflokadresse = 0;
-      //deflokdata = 0;
-
-     /*
-      // parameter resetten
-      lokadresseA = 0;
-      lokadresseB = 0;
-      rawdataA = 0;
-      rawdataB = 0;
-      
-      rawfunktionA=0;
-      rawfunktionB=0;
-      deffunktiondata=0;
-      */
- //     HIimpulsdauer = 0;
-      //OSZIAHI;
+       funktion = 0;
+       //OSZIAHI;
    } 
    
    else // Data in Gang, neuer Interrupt
@@ -306,6 +289,31 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
 {
    //OSZIATOG;
    //return;
+   
+   /*
+   if(lokstatus & (1<<FUNKTIONBIT))
+   {
+      dimmcounter++;
+      
+      if(dimmcounter > LEDPWM)
+      {
+         LAMPEPORT &= ~(1<<ledonpin); // Lampe-PWM  OFF
+         
+      }
+      
+      if(dimmcounter > 253)
+      {
+         LAMPEPORT |= (1<<ledonpin); // Lampe-PWM  ON, neuer Impuls
+      dimmcounter = 0;
+      }
+      
+      
+   } // if Funktionbit
+   */
+   
+   
+   
+   
    if (speed)
    {
       motorPWM++;
@@ -455,8 +463,6 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                   {
                      //OSZIALO;
                      // Daten uebernehmen
-                     //   STATUSPORT |= (1<<DATAOK); // LED ON
-                     //  STATUSPORT |= (1<<ADDRESSOK); // LED ON
                      
                      lokstatus |= (1<<ADDRESSBIT);
                      deflokadresse = lokadresseB;

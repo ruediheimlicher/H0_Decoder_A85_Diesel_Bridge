@@ -76,6 +76,11 @@
 #define FIRSTRUN_BIT 0
 #define LOOP_BIT 0
 
+// lokstatus-Bits
+#define FUNKTION     0
+#define OLDFUNKTION  1
+#define FUNKTIONSTATUS 2
+
 
 // lokstatus-Bits
 
