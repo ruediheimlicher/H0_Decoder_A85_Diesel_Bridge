@@ -595,7 +595,10 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                            oldspeed = speed; // behalten
                         
                            speedintervall = (newspeed - speed)>>2; // 4 teile
-                            
+                            if(speedintervall == 0)
+                            {
+                               speedintervall = 1;
+                            }
                            
                             //newspeed = speedlookuptable[speedindex][speedcode]; // zielwert
                             newspeed = speedlookup[speedcode]; // zielwert
