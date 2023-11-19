@@ -24,11 +24,11 @@
 //***********************************
 
 //Diesel RH
- //uint8_t  LOK_ADRESSE = 0x0F; //	0000 1111 (eingestellt im Sender als 1100)
+// uint8_t  LOK_ADRESSE = 0x0F; //	0000 1111 (eingestellt im Sender als 1100)
 
 // Diesel CH
-//uint8_t  LOK_ADRESSE = 0xC3; //   1100 0011 (eingestellt im Sender als 1001)
-uint8_t  LOK_ADRESSE = 0xCC;
+uint8_t  LOK_ADRESSE = 0xC3; //   1100 0011 (eingestellt im Sender als 1001)
+//uint8_t  LOK_ADRESSE = 0xCC;
 //									
 //***********************************
 
@@ -49,10 +49,6 @@ uint8_t  LOK_ADRESSE = 0xCC;
 
 
 
-//volatile uint8_t rxbuffer[buffer_size];
-
-/*Der Sendebuffer, der vom Master ausgelesen werden kann.*/
-//volatile uint8_t txbuffer[buffer_size];
 
 
 
@@ -138,7 +134,7 @@ volatile uint8_t     richtungpin = MOTORB_PIN;      // Motor Richtung
 //volatile uint16_t   taktimpuls=0;
 
 volatile uint8_t   motorPWM=0;
-volatile uint8_t   motorPWM_n=0;
+//volatile uint8_t   motorPWM_n=0;
 
 
 volatile uint16_t   wdtcounter = 0;
@@ -171,7 +167,7 @@ uint16_t speedchangetakt = 0x350; // takt fuer beschleunigen/bremsen
 
 volatile uint8_t loktyptable[4];
 
-volatile uint8_t speedindex = 7;
+volatile uint8_t speedindex = 8;
 
 volatile uint8_t   maxspeed =  252;//prov.
 
@@ -201,10 +197,9 @@ void slaveinit(void)
    richtungpin = MOTORB_PIN;
    ledonpin = LAMPEA_PIN;
    ledoffpin = LAMPEB_PIN;
-   LAMPEPORT |=(1<<LAMPEA_PIN);
-   LAMPEPORT &= ~(1<<LAMPEB_PIN);
+   //LAMPEPORT |=(1<<LAMPEA_PIN);
+   //LAMPEPORT &= ~(1<<LAMPEB_PIN);
    
-
 
    
    maxspeed =  speedlookuptable[speedindex][14];
@@ -474,11 +469,13 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                      {
                         lokstatus |= (1<<FUNKTIONBIT);
                         ledstatus |= (1<<LED_CHANGEBIT); // change setzen
+                        
                      }
                      else
                      {
                         lokstatus &= ~(1<<FUNKTIONBIT);
                         ledstatus |= (1<<LED_CHANGEBIT); // led-change setzen
+                        
                      }
                      // deflokdata aufbauen
                      for (uint8_t i=0;i<8;i++)
@@ -586,8 +583,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                             
                             if(speedcode && (speedcode < 2) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
                             {
-                               //startspeed = speedlookuptable[speedindex][speedcode] + 1; // kleine Zugabe
-                               startspeed = speedlookup[speedcode] + 1; // kleine Zugabe
+                                 startspeed = speedlookup[speedcode] + 1; // kleine Zugabe
                                
                                lokstatus |= (1<<STARTBIT);
                             }
@@ -795,9 +791,9 @@ int main (void)
             {
                pwmpin = MOTORB_PIN;
                richtungpin = MOTORA_PIN;
-               //ledonpin = LAMPEB_PIN;
-              // ledoffpin = LAMPEA_PIN;
-               
+               ledonpin = LAMPEB_PIN;
+               ledoffpin = LAMPEA_PIN;
+               /*
                if(lokstatus & (1<<FUNKTIONBIT))
                {
                   
@@ -811,14 +807,15 @@ int main (void)
                   LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
 
                }
-
+*/
             }
             else // auch default
             {
                pwmpin = MOTORA_PIN;
                richtungpin = MOTORB_PIN;
-               //ledonpin = LAMPEA_PIN;
-               //ledoffpin = LAMPEB_PIN;
+               ledonpin = LAMPEA_PIN;
+               ledoffpin = LAMPEB_PIN;
+               /*
                if(lokstatus & (1<<FUNKTIONBIT))
                {
                   
@@ -831,7 +828,7 @@ int main (void)
                   LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
                   LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
                }
-
+                */
             }
             MOTORPORT |= (1<<richtungpin); // Richtung setzen
             
@@ -846,15 +843,16 @@ int main (void)
          {
             if(lokstatus & (1<<FUNKTIONBIT))
             {
-            //   LAMPEPORT |= (1<<ledonpin); // Lampe  ON
-             //  LAMPEPORT &= ~(1<<ledoffpin); // // Lampe  OFF
+               LAMPEPORT |= (1<<ledonpin); // Lampe  ON
+               LAMPEPORT &= ~(1<<ledoffpin); // // Lampe  OFF
                
             }
             else
             {
                // beide lampen OFF
-            //   LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
-            //   LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
+               LAMPEPORT &= ~(1<<ledonpin); // // Lampe  OFF
+               //LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
+               //LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
             }
             ledstatus &= ~(1<<LED_CHANGEBIT);
          }
