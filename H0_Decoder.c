@@ -157,6 +157,9 @@ uint8_t speedlookuptable[10][15] =
    {0,42,45,51,58,68,79,93,108,125,144,165,188,213,240}
 };
 
+//volatile uint8_t speedindex = 8; // Diesel CH
+
+volatile uint8_t speedindex = 7; // $diesel RH
 // {0,41,44,48,53,59,67,77,87,99,113,128,144,161,180};
 
 volatile uint8_t   lastDIR =  0;
@@ -167,7 +170,7 @@ uint16_t speedchangetakt = 0x350; // takt fuer beschleunigen/bremsen
 
 volatile uint8_t loktyptable[4];
 
-volatile uint8_t speedindex = 8;
+
 
 volatile uint8_t   maxspeed =  252;//prov.
 
@@ -190,6 +193,8 @@ void slaveinit(void)
     
    LAMPEDDR |= (1<<LAMPEB_PIN);  // Lampe B
    LAMPEPORT &= ~(1<<LAMPEB_PIN); // LO
+   
+   
    
    // default
    
@@ -264,7 +269,7 @@ ISR(INT0_vect)
       
       waitcounter = 0;
       tritposition = 0;
-       funktion = 0;
+      funktion = 0;
        //OSZIAHI;
    } 
    
@@ -324,7 +329,6 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
        MOTORPORT &= ~(1<<pwmpin);
 
       motorPWM = 0;
-      
    }
    
    
@@ -579,15 +583,13 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                                  break;
                                  
                            }
-                           //speed = speedlookup[speedcode];
+                           newspeed = speedlookup[speedcode];
                             
-                            if(speedcode && (speedcode < 2) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
+                            if(speedcode && (speedcode == 1) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
                             {
                                  startspeed = speedlookup[speedcode] + 1; // kleine Zugabe
-                               
                                lokstatus |= (1<<STARTBIT);
                             }
-
                            oldspeed = speed; // behalten
                         
                            speedintervall = (newspeed - speed)>>2; // 4 teile
@@ -596,8 +598,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                                speedintervall = 1;
                             }
                            
-                            //newspeed = speedlookuptable[speedindex][speedcode]; // zielwert
-                            newspeed = speedlookup[speedcode]; // zielwert
+                             //newspeed = speedlookup[speedcode]; // zielwert
                            
                             
                             if(speedcode > 0)
@@ -740,9 +741,9 @@ int main (void)
             loopcount1 = 0;
             //OSZIATOG;
             
-            
+            // MARK: speed var           
             // speed var
-            if((newspeed > oldspeed)) // beschleunigen, speedintervall positiv
+            if((newspeed > speed)) // beschleunigen, speedintervall positiv
             {
                if(speed < (newspeed - speedintervall))
                {
@@ -751,7 +752,6 @@ int main (void)
                      speed = startspeed;
                      lokstatus &= ~(1<<STARTBIT);
                   }
-                  
                   speed += speedintervall;
                }
                else 
@@ -759,11 +759,21 @@ int main (void)
                   speed = newspeed;
                }
             }
-            else if((newspeed < oldspeed)) // bremsen, speedintervall negativ
+            else if((newspeed < speed)) // bremsen, speedintervall negativ
+           
             {
-               if((speed > newspeed) && ((speed + 2*speedintervall) > 0))
+               //if((speed > newspeed) && ((speed + 2*speedintervall) > 0))
+               if((speed + 2*speedintervall) > 0)
                {
                   speed += 2*speedintervall;
+                  if(speed < minspeed)
+                  {
+                     if(newspeed == 0) // Motor soll abstellen
+                     {
+                        //OSZI_A_HI();
+                        speed = 0; // Motor OFF
+                     }
+                  }
                }
                else 
                {
@@ -789,6 +799,7 @@ int main (void)
          {
             if(pwmpin == MOTORA_PIN)
             {
+               
                pwmpin = MOTORB_PIN;
                richtungpin = MOTORA_PIN;
                ledonpin = LAMPEB_PIN;
