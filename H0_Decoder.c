@@ -28,7 +28,6 @@
 
 // Diesel CH
 uint8_t  LOK_ADRESSE = 0xC3; //   1100 0011 (eingestellt im Sender als 1001)
-//uint8_t  LOK_ADRESSE = 0xCC;
 //									
 //***********************************
 
@@ -46,10 +45,6 @@ uint8_t  LOK_ADRESSE = 0xC3; //   1100 0011 (eingestellt im Sender als 1001)
 
 
 #define DATAPIN  2 // INT0
-
-
-
-
 
 
 volatile uint8_t   INT0status=0x00;            
@@ -164,8 +159,8 @@ volatile uint8_t speedindex = 7; // $diesel RH
 
 volatile uint8_t   lastDIR =  0;
 uint8_t loopledtakt = 0x40;
-uint8_t refreshtakt = 0x45;
-uint16_t speedchangetakt = 0x350; // takt fuer beschleunigen/bremsen
+uint8_t refreshtakt = 0x50;
+uint16_t speedchangetakt = 0x400; // takt fuer beschleunigen/bremsen
 
 
 volatile uint8_t loktyptable[4];
