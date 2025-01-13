@@ -45,8 +45,8 @@
 #define MAX_EEPROM      512
 
 // defines fuer richtungstatus
-#define RICHTUNGCHANGESTARTBIT  0
-#define RICHTUNGCHANGEOKBIT  1
+#define RICHTUNGCHANGESTARTBIT   0
+#define RICHTUNGCHANGEOKBIT      1
 
 #define STARTINDEX 2 // Index fuer Anlauf
 
@@ -56,7 +56,7 @@
 
 
 //PINS
-// von Decoder84
+// 
 
 #define LED_CHANGEBIT    7
 
@@ -102,7 +102,7 @@
 #define PROGBIT         3 // Programmiermodus
 #define FUNKTIONBIT     4
 #define RUNBIT          5
-#define RICHTUNGCHANGESTARTBIT     6
+#define RICHTUNGBIT     6
 #define LOK_CHANGEBIT       7  
 
 #define STARTDELAY      100

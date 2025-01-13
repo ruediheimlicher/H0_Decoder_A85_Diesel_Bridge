@@ -161,6 +161,10 @@ uint8_t loopledtakt = 0x40;
 uint8_t refreshtakt = 0x50;
 uint16_t speedchangetakt = 0x400; // takt fuer beschleunigen/bremsen
 
+volatile uint16_t    saveEEPROM_Addresse = 0;
+
+volatile uint8_t     EEPROM_savestatus = 0;
+volatile uint8_t     EEPROM_lastsavedstatus = 0;
 
 volatile uint8_t loktyptable[4];
  // EEPROM
@@ -168,12 +172,28 @@ volatile uint8_t   richtungstatus=0x00; //  Richtung
 uint8_t              lasteepromdata = 0;
 
 // Funktion, um ein Byte in den EEPROM zu schreiben
-void EEPROM_Write(uint16_t address, uint8_t data) {
-    eeprom_update_byte((uint8_t*)address, data);
+void EEPROM_Write(uint16_t address, uint8_t data) 
+{
+   
+   eeprom_update_byte((uint8_t*)address, data);
+   /*
+   //_delay_ms(10);
+   uint8_t returndata = eeprom_read_byte((uint8_t*)address);
+   
+   if(data && (data < 0xFF) && (returndata == data))
+   {
+      for (uint8_t i = 0;i<4;i++)
+      {
+         OSZIATOG;
+         _delay_ms(1);
+      }
+   }
+   */
 }
 
 // Funktion, um ein Byte aus dem EEPROM zu lesen
-uint8_t EEPROM_Read(uint16_t address) {
+uint8_t EEPROM_Read(uint16_t address) 
+{
     return eeprom_read_byte((uint8_t*)address);
 }
 
@@ -200,7 +220,23 @@ uint8_t EEPROM_read(uint16_t address) {
     return EEDR;
 }
 
+void EEPROM_write(uint8_t address, uint8_t data) 
+{
+   
+    // Wait for completion of previous write
+    while (EECR & (1 << EEPE))
+        ;
 
+    // Set up address and data registers
+    EEAR = address;    // Set EEPROM address register
+    EEDR = data;       // Set EEPROM data register
+
+    // Write logical one to EEMPE
+    EECR |= (1 << EEMPE);
+
+    // Start eeprom write by setting EEPE
+    EECR |= (1 << EEPE);
+}
 
 
 // EEPROM
@@ -228,16 +264,6 @@ void slaveinit(void)
    
    
    
-   // default
-   
-   pwmpin = MOTORA_PIN;
-   richtungpin = MOTORB_PIN;
-   ledonpin = LAMPEA_PIN;
-   ledoffpin = LAMPEB_PIN;
-   //LAMPEPORT |=(1<<LAMPEA_PIN);
-   //LAMPEPORT &= ~(1<<LAMPEB_PIN);
-   
-
    
    maxspeed =  speedlookuptable[speedindex][14];
    //initADC(0);
@@ -665,8 +691,7 @@ int main (void)
    MCUSR = 0;
    wdt_disable();
    slaveinit();
-   int0_init();
-   timer0(4);
+ 
    uint16_t loopcount0=0;
    uint16_t loopcount1=0;
    
@@ -677,196 +702,293 @@ int main (void)
    // https://bigdanzblog.wordpress.com/2015/07/20/resetting-rebooting-attiny85-with-watchdog-timer-wdt/
    wdt_reset();
    ledpwm = LEDPWM;
-   //minspeed = speedlookuptable[speedindex][0];
-   //maxspeed = speedlookuptable[speedindex][14];
-   
    
    uint8_t i = 0;
    for (i=0;i<15;i++)
    {
       speedlookup[i] = speedlookuptable[speedindex][i];
    }
+   maxspeed = speedlookup[14];
+   minspeed = speedlookup[1];
+
+   // EEPROM
+   // naechste Adresse fuer save Status
+    for (uint16_t loc = 0;loc < MAX_EEPROM; loc++)
+   {   
+      uint8_t locdata = EEPROM_Read(loc);
+      if(locdata == 0xFF)
+      {
+         saveEEPROM_Addresse = loc;
+         break;
+      }
+   }
+   wdt_reset();
+   //saveEEPROM_Addresse = 1;
    
- //  ablaufstatus |= (1<<FIRSTRUN_BIT);
+   if(saveEEPROM_Addresse)
+   {
+      /*
+      for (uint8_t i = 0;i<4;i++)
+      {
+         OSZIATOG;
+         _delay_ms(1);
+      }
+       */
+      
+      // data von letzter Adresse:
+      EEPROM_lastsavedstatus = EEPROM_Read(saveEEPROM_Addresse - 1);
+       
+      // ATTiny84 ist anders !!!
+      
+      // MOTORA/B_PIN ist 3/4
+      uint8_t lastdircode = (EEPROM_lastsavedstatus & 0x1B) >> 3;
+      
+      if (lastdircode == 1)
+      {
+         pwmpin = MOTORA_PIN;
+         richtungpin = MOTORB_PIN;
+         ledonpin = LAMPEA_PIN;
+         ledoffpin = LAMPEB_PIN;
+      }
+      else if (lastdircode == 2)
+      {
+         pwmpin = MOTORB_PIN;
+         richtungpin = MOTORA_PIN;
+         ledonpin = LAMPEB_PIN;
+         ledoffpin = LAMPEA_PIN;
+      }
+    }
+   else // default
+   {
+      pwmpin = MOTORA_PIN;
+      richtungpin = MOTORB_PIN;
+      ledonpin = LAMPEA_PIN;
+      ledoffpin = LAMPEB_PIN;
+      
+   }
+   // EEPROM
+   
+   wdt_reset();
+   int0_init();
+   timer0(4);
+
    sei();
    while (1)
    {   
       // Timing: loop: 40 us, takt 85us, mit if-teil 160 us
       wdt_reset();
       {
-         //PORTA &= ~(1<<PA4); // LED on
-         
-         
-         if(lokstatus & (1<<FUNKTIONBIT))
-         {
-            /*
-            if(dimmcounter == 3)
-            {
-               LAMPEPORT |= (1<<ledonpin); // Lampe-PWM  ON
-               
-            }
-            dimmcounter++;
-            if(dimmcounter > 32)
-            {
-               LAMPEPORT &= ~(1<<ledonpin); // Lampe-PWM  OFF
-               dimmcounter = 0;
-            }
-            */
-         }
-
          
          loopcount1++;
          if (loopcount1 >= speedchangetakt)
          {
+             loopcount1 = 0;
             
-            //LOOPLEDPORT ^= (1<<LOOPLED); // Kontrolle lastDIR
-            loopcount1 = 0;
-            //OSZIATOG;
-            
-            // MARK: speed var           
+            // MARK: SPEED VAR
             // speed var
             if((newspeed > speed)) // beschleunigen, speedintervall positiv
             {
-               if(speed < (newspeed - speedintervall))
+               //OSZIALO;
+               if(speed < (newspeed - speedintervall)) 
                {
                   if((startspeed > speed) && (lokstatus & (1<<STARTBIT))) // Startimpuls
                   {
                      speed = startspeed;
                      lokstatus &= ~(1<<STARTBIT);
                   }
-                  speed += speedintervall;
-               }
-               else 
-               {
-                  speed = newspeed;
-               }
-            }
-            else if((newspeed < speed)) // bremsen, speedintervall negativ
-           
-            {
-               //if((speed > newspeed) && ((speed + 2*speedintervall) > 0))
-               if((speed + 2*speedintervall) > 0)
-               {
-                  speed += 2*speedintervall;
-                  if(speed < minspeed)
+                  else 
                   {
-                     if(newspeed == 0) // Motor soll abstellen
-                     {
-                        //OSZI_A_HI();
-                        speed = 0; // Motor OFF
-                     }
+                     speed += speedintervall;
                   }
                }
                else 
                {
+                  
+                  speed = newspeed;
+                  
+               }
+               //OSZIAHI;
+               
+            }
+            else if((newspeed < speed)) // bremsen, speedintervall negativ
+            {
+               
+               uint8_t bremsintervall = (speedintervall / 4 * 3);
+               if((speed > newspeed ) && (bremsintervall > 0))
+               {
+                  speed += bremsintervall; // : war 2*speedintervall
+                  if(speed <= minspeed)
+                  {
+                     if((newspeed == 0) ) // Motor soll abstellen
+                     {
+                        speed = 0; // Motor OFF
+                     } // if newspeed == 0
+                     
+                  } //  if(speed <= minspeed/4)
+                  
+               }
+               else 
+               {
                   speed = newspeed;
                }
+               //OSZI_A_HI();
+            } // newspeed < speed
+            
+            // speed == 0 start
+            
+            if (speed == 0) // Stillstand erreicht
+            {
+               
+               
+               // MARK: RICHTUNG CHANGE
+               if(richtungstatus & (1<<RICHTUNGCHANGESTARTBIT))
+               {
+                  // detektiert
+                  wdt_reset();
+                  if(lokstatus & (1<<LOK_CHANGEBIT)) // Motor-Pins tauschen
+                  {
+                     // detektiert
+                     
+
+                     // err
+                     //OSZIATOG;
+                     //_delay_ms(100);
+                     // EEPROM sichern
+                     EEPROM_savestatus &= ~0xF0;
+                     EEPROM_savestatus |= ((speedcode & 0x0F) << 4);
+                     if(pwmpin == MOTORA_PIN) // > auf MOTORB wechseln
+                     {
+                        pwmpin = MOTORB_PIN;
+                        richtungpin = MOTORA_PIN;
+                        EEPROM_savestatus &= ~(1<<MOTORA_PIN);
+                        EEPROM_savestatus |= (1<<MOTORB_PIN);
+                        
+                        if(lokstatus & (1<<FUNKTIONBIT)) // Funktion ist 1, einschalten
+                        {
+                           EEPROM_savestatus |= (1<<LAMPEA_PIN);
+                           EEPROM_savestatus &= ~(1<<LAMPEB_PIN);
+                        }
+                        else // funktion ist 0, ausschalten
+                        {
+                           // beide lampen OFF
+                           EEPROM_savestatus &= ~(1<<LAMPEB_PIN);
+                           EEPROM_savestatus &= ~(1<<LAMPEA_PIN);
+                        }
+                     }
+                     else  if(pwmpin == MOTORB_PIN)// auch default
+                     {
+                        pwmpin = MOTORA_PIN;
+                        richtungpin = MOTORB_PIN;
+                        EEPROM_savestatus &= ~(1<<MOTORB_PIN);
+                        EEPROM_savestatus |= (1<<MOTORA_PIN);
+                        
+                        if(lokstatus & (1<<FUNKTIONBIT)) // Funktion ist 1, einschalten
+                        {
+                           EEPROM_savestatus |= (1<<LAMPEB_PIN);
+                           EEPROM_savestatus &= ~(1<<LAMPEA_PIN);
+                        }
+                        else // funktion ist 0, ausschalten
+                        {
+                           // beide lampen OFF
+                           EEPROM_savestatus &= ~(1<<LAMPEB_PIN);
+                           EEPROM_savestatus &= ~(1<<LAMPEA_PIN);
+                        }
+                        
+                     }
+                     /*
+                     for (uint8_t i = 0;i<4;i++)
+                     {
+                        OSZIATOG;
+                        _delay_ms(1);
+                     }
+                      */
+                     //OSZIATOG;
+                     //LAMPEPORT &= ~(1<<ledonpin); // Lampe   0ff 
+                     //_delay_ms(200);
+                     
+                     EEPROM_Write(saveEEPROM_Addresse,EEPROM_savestatus);
+                     /*
+                     for (uint8_t i = 0;i<4;i++)
+                     {
+                        OSZIATOG;
+                        _delay_ms(1);
+                     }
+                      */
+                     //_delay_ms(200);
+                     //LAMPEPORT |= (1<<ledonpin); // Lampe    0n
+                     //OSZIATOG;
+                     //OSZIAHI;
+                     
+                     if(saveEEPROM_Addresse > 20)
+                     {
+                       // EEPROM_Clear();
+                       // saveEEPROM_Addresse = 0;
+                     }
+                     else 
+                        
+                     {
+                        
+                        saveEEPROM_Addresse++;
+                     }
+                     
+                     MOTORPORT |= (1<<richtungpin); // Richtung wechseln
+                     
+                     lokstatus &= ~(1<<LOK_CHANGEBIT);
+                     lokstatus &= ~(1<<RUNBIT);
+                     
+                     richtungstatus |= (1<<RICHTUNGCHANGEOKBIT); // Richtungswechsel erfolgt
+                     
+                  } // if changebit
+                   
+               } // if(richtungstatus & (1<<RICHTUNGCHANGESTARTBIT))
+               
+               
+               
+            } // if speeed == 0
+            
+            // speed == 0 end
+            
+            
+            // Lampen einstellen
+            wdt_reset();
+            if(ledstatus & (1<<LED_CHANGEBIT))
+            {
+               if(richtungpin == MOTORA_PIN)
+               {
+                  ledonpin = LAMPEB_PIN;
+                  ledoffpin = LAMPEA_PIN;
+               }
+               else 
+               {
+                  ledonpin = LAMPEA_PIN;
+                  ledoffpin = LAMPEB_PIN;
+               }
+               //OSZI_B_LO();
+               if(lokstatus & (1<<FUNKTIONBIT))
+               {
+                  
+                  LAMPEPORT |= (1<<ledonpin); // Lampe         +
+                  LAMPEPORT &= ~(1<<ledoffpin); // // Lampe    0
+                  
+               }
+               else
+               {
+                  // beide lampen OFF
+                  //OSZI_A_HI();
+                  LAMPEPORT &= ~(1<<ledonpin); // // eingeschaltete Lampe  OFF
+                  
+               }
+               //OSZI_B_HI();
+               ledstatus &= ~(1<<LED_CHANGEBIT);
             }
-            // end speed var
+            
+            //displaydata[SPEED] = speed;
             
          } // loopcount1 >= speedchangetakt
          
       }// Source OK
       
-      
-      loopcount0++;
-      if (loopcount0>=refreshtakt)
-      {
-         //OSZIATOG;
-         //LOOPLEDPORT ^= (1<<LOOPLED); 
-         
-         loopcount0=0;
-         
-         if(lokstatus & (1<<LOK_CHANGEBIT)) // Motor-Pins tauschen
-         {
-            if(pwmpin == MOTORA_PIN)
-            {
-               
-               pwmpin = MOTORB_PIN;
-               richtungpin = MOTORA_PIN;
-               ledonpin = LAMPEB_PIN;
-               ledoffpin = LAMPEA_PIN;
-               /*
-               if(lokstatus & (1<<FUNKTIONBIT))
-               {
-                  
-                  LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
-                  LAMPEPORT |= (1<<LAMPEA_PIN); // Lampe A OFF
-               }
-               else
-               {
-                  // beide lampen OFF
-                  LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
-                  LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
-
-               }
-*/
-            }
-            else // auch default
-            {
-               pwmpin = MOTORA_PIN;
-               richtungpin = MOTORB_PIN;
-               ledonpin = LAMPEA_PIN;
-               ledoffpin = LAMPEB_PIN;
-               /*
-               if(lokstatus & (1<<FUNKTIONBIT))
-               {
-                  
-                  LAMPEPORT |= (1<<LAMPEB_PIN); // Lampe B OFF
-                  LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
-               }
-               else 
-               {
-                  // beide lampen OFF
-                  LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
-                  LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
-               }
-                */
-            }
-            MOTORPORT |= (1<<richtungpin); // Richtung setzen
-            
-            lokstatus &= ~(1<<LOK_CHANGEBIT);
-            
-         } // if changebit
-         
-         
-         
-         // Lampen einstellen
-         if(ledstatus & (1<<LED_CHANGEBIT))
-         {
-            if(lokstatus & (1<<FUNKTIONBIT))
-            {
-               LAMPEPORT |= (1<<ledonpin); // Lampe  ON
-               LAMPEPORT &= ~(1<<ledoffpin); // // Lampe  OFF
-               
-            }
-            else
-            {
-               // beide lampen OFF
-               LAMPEPORT &= ~(1<<ledonpin); // // Lampe  OFF
-               //LAMPEPORT &= ~(1<<LAMPEB_PIN); // Lampe B OFF
-               //LAMPEPORT &= ~(1<<LAMPEA_PIN); // Lampe A OFF
-            }
-            ledstatus &= ~(1<<LED_CHANGEBIT);
-         }
-
-         
-         
-         
-     /*        
-         if (deflokadresse == LOK_ADRESSE)
-         {
-            //OSZIATOG;
-         }
-         else
-         {
-            //OSZIAHI;
-         }
-      */   
-         
-      }  // loopcount0>=refreshtakt
-      
-      //OSZIAHI;
+   
    }//while
    return 0;
 }
