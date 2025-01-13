@@ -41,6 +41,18 @@
 #define MOTORDDR    DDRB
 #define MOTORPIN    PINB
 
+// EEPROM
+#define MAX_EEPROM      512
+
+// defines fuer richtungstatus
+#define RICHTUNGCHANGESTARTBIT  0
+#define RICHTUNGCHANGEOKBIT  1
+
+#define STARTINDEX 2 // Index fuer Anlauf
+
+
+
+// EEPROM
 
 
 //PINS
@@ -90,7 +102,7 @@
 #define PROGBIT         3 // Programmiermodus
 #define FUNKTIONBIT     4
 #define RUNBIT          5
-#define RICHTUNGBIT     6
+#define RICHTUNGCHANGESTARTBIT     6
 #define LOK_CHANGEBIT       7  
 
 #define STARTDELAY      100
@@ -118,6 +130,8 @@
 //#define INT0_RUN        2 // detektiert Datenfluss
 
 #define LAMPEMAX 0x40 // 50%
+
+#define FIRSTRUNBIT 0
 
 #define FIRSTRUN_END 80
 

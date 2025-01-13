@@ -14,7 +14,7 @@
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include "defines.h"
-
+#include <avr/eeprom.h>
 
 //#define LOK_TYP_DIESEL  1
 //#define LOK_TYP_RE44  2
@@ -148,13 +148,12 @@ uint8_t speedlookuptable[10][15] =
    {0,41,42,44,47,51,56,61,67,74,82,90,99,109,120},
    {0,41,43,45,49,54,60,66,74,82,92,103,114,127,140},
    {0,41,44,48,53,59,67,77,87,99,113,128,144,161,180},
-   {0,42,45,50,57,65,75,87,101,116,134,153,173,196,220},
-   {0,42,45,51,58,68,79,93,108,125,144,165,188,213,240}
+   {0,32,38,46,57,65,75,87,101,116,134,153,173,196,220},    // 8
+   {0,42,45,51,58,68,79,93,108,125,144,165,188,213,240}     // 9
 };
 
-//volatile uint8_t speedindex = 8; // Diesel CH
+volatile uint8_t speedindex = 8; // Diesel CH
 
-volatile uint8_t speedindex = 7; // $diesel RH
 // {0,41,44,48,53,59,67,77,87,99,113,128,144,161,180};
 
 volatile uint8_t   lastDIR =  0;
@@ -164,9 +163,47 @@ uint16_t speedchangetakt = 0x400; // takt fuer beschleunigen/bremsen
 
 
 volatile uint8_t loktyptable[4];
+ // EEPROM
+volatile uint8_t   richtungstatus=0x00; //  Richtung
+uint8_t              lasteepromdata = 0;
+
+// Funktion, um ein Byte in den EEPROM zu schreiben
+void EEPROM_Write(uint16_t address, uint8_t data) {
+    eeprom_update_byte((uint8_t*)address, data);
+}
+
+// Funktion, um ein Byte aus dem EEPROM zu lesen
+uint8_t EEPROM_Read(uint16_t address) {
+    return eeprom_read_byte((uint8_t*)address);
+}
+
+void EEPROM_Clear(void) 
+{
+   uint16_t addr = 0;
+   while (addr++ < MAX_EEPROM)
+   {
+      EEPROM_Write(addr, 0xFF);
+   }
+}
+// Function to read a byte from the EEPROM from ChatGPT
+uint8_t EEPROM_read(uint16_t address) {
+    // Wait for completion of previous write
+    while (EECR & (1 << EEPE));
+
+    // Set up address register
+    EEAR = address;
+
+    // Start EEPROM read by writing EERE
+    EECR |= (1 << EERE);
+
+    // Return data from the data register
+    return EEDR;
+}
 
 
 
+
+// EEPROM
 volatile uint8_t   maxspeed =  252;//prov.
 
 void slaveinit(void)
@@ -282,59 +319,27 @@ ISR(INT0_vect)
 // MARK: ISR Timer0
 ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
 {
-   //OSZIATOG;
-   //return;
-   
-   /*
-   if(lokstatus & (1<<FUNKTIONBIT))
-   {
-      dimmcounter++;
-      
-      if(dimmcounter > LEDPWM)
-      {
-         LAMPEPORT &= ~(1<<ledonpin); // Lampe-PWM  OFF
-         
-      }
-      
-      if(dimmcounter > 253)
-      {
-         LAMPEPORT |= (1<<ledonpin); // Lampe-PWM  ON, neuer Impuls
-      dimmcounter = 0;
-      }
-      
-      
-   } // if Funktionbit
-   */
-   
-   
-   
-   
    if (speed)
    {
       motorPWM++;
    }
    if ((motorPWM > speed) || (speed == 0)) // Impulszeit abgelaufen oder speed ist 0
    {
-      MOTORPORT |= (1<<pwmpin);      
-
+      MOTORPORT |= (1<<pwmpin);    // Motor OFF 
    }
    
-   if (motorPWM >= 254) //ON, neuer Motorimpuls
+   if (motorPWM >= 250) //ON, neuer Motorimpuls
    {
-       MOTORPORT &= ~(1<<pwmpin);
-
-      motorPWM = 0;
+      MOTORPORT &= ~(1<<pwmpin); // Motor ON
+      motorPWM = 0;      
    }
-   
-   
    
    // MARK: TIMER0 TIMER0_COMPA INT0
    if (INT0status & (1<<INT0_WAIT))
    {
       waitcounter++; 
-      if (waitcounter > 2)// Impulsdauer > minimum, nach einer gewissen Zeit den Stautus abfragen
+      if (waitcounter > 2)// Impulsdauer > minimum, nach einer gewissen Zeit den Stauts abfragen
       {
-         //OSZIAHI;
          INT0status &= ~(1<<INT0_WAIT);
          if (INT0status & (1<<INT0_PAKET_A))
          {
@@ -360,7 +365,6 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                   rawfunktionA &= ~(1<<(tritposition-8)); // bit ist 0
                }
             }
-
             else
             {
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
@@ -373,12 +377,10 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                }
             }
          }
-         
          if (INT0status & (1<<INT0_PAKET_B))
          {
             if (tritposition < 8) // Adresse)
             {
-               
                if (INPIN & (1<<DATAPIN)) // Pin HI, 
                {
                   lokadresseB |= (1<<tritposition); // bit ist 1
@@ -398,9 +400,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                {
                   rawfunktionB &= ~(1<<(tritposition-8)); // bit ist 0
                }
-               
             }
-            
             
             else
             {
@@ -449,32 +449,27 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
             else if (INT0status & (1<<INT0_PAKET_B)) // zweites Paket, Werte testen
             {
                
-               
+               //OSZIATOG; // zwei pakete da
 // MARK: EQUAL
                if (lokadresseA && ((rawfunktionA == rawfunktionB) && (rawdataA == rawdataB) && (lokadresseA == lokadresseB))) // Lokadresse > 0 und Lokadresse und Data OK
                {
                   if (lokadresseB == LOK_ADRESSE)
                   {
-                     //OSZIALO;
                      // Daten uebernehmen
                      
                      lokstatus |= (1<<ADDRESSBIT);
                      deflokadresse = lokadresseB;
-                     //deffunktion = (rawdataB & 0x03); // bit 0,1 funktion als eigene var
                      deffunktion = rawfunktionB;
-                     
                      
                      if (deffunktion)
                      {
                         lokstatus |= (1<<FUNKTIONBIT);
                         ledstatus |= (1<<LED_CHANGEBIT); // change setzen
-                        
                      }
                      else
                      {
                         lokstatus &= ~(1<<FUNKTIONBIT);
                         ledstatus |= (1<<LED_CHANGEBIT); // led-change setzen
-                        
                      }
                      // deflokdata aufbauen
                      for (uint8_t i=0;i<8;i++)
@@ -490,46 +485,37 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                         }
                      }
                      
-                     
+                    // MARK: RICHTUNG 
                      // Richtung
                      if (deflokdata == 0x03) // Wert 1, > Richtung togglen
                      {
-                        if (!(lokstatus & (1<<RICHTUNGBIT))) // Start Richtungswechsel
+                        if (richtungstatus == 0) // letzter Richtungswechel ist abgeschlossen
                         {
-                           lokstatus |= (1<<RICHTUNGBIT); // Vorgang starten, speed auf 0 setzen
-                           richtungcounter = 0;
-                           //oldspeed = speed; // behalten
-                           //speed = 0;
-                           
+                           richtungstatus |= (1<<RICHTUNGCHANGESTARTBIT); // Vorgang starten, speed auf 0 setzen
+                        
                            lokstatus |= (1<<LOK_CHANGEBIT); // lok-change setzen
                            ledstatus |= (1<<LED_CHANGEBIT); // led-change setzen
 
-                        } // if !(lokstatus & (1<<RICHTUNGBIT)
+                        } // if !(richtungstatus & (1<<RICHTUNGCHANGESTARTBIT)
                         
-                        
-                        /* TODO
-                        else // repetition 0x03
-                        {
-                           richtungcounter++;
-                           if (richtungcounter > 4)
-                           {
-                              lokstatus &= ~(1<<RICHTUNGBIT); // Vorgang Richtungsbit wieder beenden, 
-                              richtungcounter = 0;
-                           }
-                        }
-                         */
                      } // deflokdata == 0x03
-                     else 
+                     
+                     else  // speed anpassen
                      {  
-                        
-                        lokstatus &= ~(1<<RICHTUNGBIT); // Vorgang Richtungsbit wieder beenden, 
+                        // richtungswechselauftrag resetten bei erfolg
+                        if(richtungstatus &(1<<RICHTUNGCHANGEOKBIT)) // richtungswechsel ist erfolgt
+                        {
+                           richtungstatus = 0;
+                        }
 // MARK: speed           
-                         {
+                        {
                            switch (deflokdata)
                            {
                               case 0:
                                  speedcode = 0;
-                                 lokstatus &= ~(1<<STARTBIT);
+                                 lokstatus &= ~(1<<STARTBIT); // Stillstand markieren, bereit fuer Start
+                                 lokstatus &= ~(1<<RUNBIT); 
+                                 
                                  break;
                               case 0x0C:
                                  speedcode = 1;
@@ -576,43 +562,44 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                               default:
                                  speedcode = 0;
                                  break;
-                                 
                            }
-                           newspeed = speedlookup[speedcode];
-                            
-                            if(speedcode && (speedcode == 1) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // noch nicht gesetzt
-                            {
-                                 startspeed = speedlookup[speedcode] + 1; // kleine Zugabe
-                               lokstatus |= (1<<STARTBIT);
-                            }
+                           // speedcode ist 1, lok kommt aus stillstand
+                           
                            oldspeed = speed; // behalten
-                        
-                           speedintervall = (newspeed - speed)>>2; // 4 teile
-                            if(speedintervall == 0)
-                            {
-                               speedintervall = 1;
-                            }
+                           newspeed = speedlookup[speedcode]; // solllwert
+                           // MARK: STARTBEDINGUNG
+                           if((speedcode == 1) && !(lokstatus & (1<<STARTBIT))  && !(lokstatus & (1<<RUNBIT))) // Start, noch nicht gesetzt  
+                           {
+                              startspeed = speedlookup[STARTINDEX] ;
+                              oldspeed = speedlookup[1] / 2;
+                              newspeed = speedlookup[1]; // kleine Zugabe
+                              lokstatus |= (1<<STARTBIT);
+                           }
+                           else
+                           {
+                              newspeed = speedlookup[speedcode]; // zielwert
+                           }
                            
-                             //newspeed = speedlookup[speedcode]; // zielwert
+                           speedintervall = (newspeed - oldspeed)>>2; // 4 teile
+                           if((speedcode > 2) && (speedintervall > 4) )
+                           {
+                              speedintervall = 4;
+                           }
                            
-                            
-                            if(speedcode > 0)
-                            {
-                               lokstatus |= (1<<RUNBIT); // lok in bewegung
-                            }
-                            else
-                            {
-                               lokstatus &= ~(1<<RUNBIT); // lok steht still
-                            }
-                           
+                           if(speedcode > 0)
+                           {
+                              lokstatus |= (1<<RUNBIT); // lok in bewegung
+                           }
+                           else
+                           {
+                              lokstatus &= ~(1<<RUNBIT); // lok steht still
+                           }
                         }
                      }
-                     
                   }
                   else 
                   {
                      // aussteigen
-                     //deflokdata = 0xCA;
                      INT0status = 0;
                      return;
                   }
@@ -628,8 +615,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
                }
                
                INT0status |= (1<<INT0_END);
-               //     OSZIPORT |= (1<<PAKETB);
-               if (INT0status & (1<<INT0_PAKET_B))
+               //if (INT0status & (1<<INT0_PAKET_B))
                {
                   //               TESTPORT |= (1<<TEST2);
                }
@@ -670,6 +656,7 @@ ISR(TIMER0_COMPA_vect) // Schaltet Impuls an MOTOROUT LO wenn speed
       }
       
    } // input LO
+   //OSZIAHI;
 }
 
 int main (void) 
